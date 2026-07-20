@@ -66,9 +66,9 @@ Endpoints operacionais permanecem fora de `/v1`:
 - `GET /ready`.
 
 Uploads `multipart/form-data` sao convertidos para `BytesSource`. Objetos HTTP,
-como arquivos do framework, nao entram no nucleo. Como o contrato ainda nao
-possui stream publico, o adapter materializa o arquivo em memoria apos validar
-limite de tamanho.
+como arquivos do framework, nao entram no nucleo. O adapter multipart inicial
+materializa o arquivo em memoria apos validar limite de tamanho; resolucao,
+deteccao de formato e hashing pertencem ao fluxo compartilhado do engine.
 
 Erros de dominio sao convertidos para `ErrorResult` com correlation ID.
 

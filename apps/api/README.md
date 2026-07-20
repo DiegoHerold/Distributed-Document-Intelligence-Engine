@@ -69,8 +69,9 @@ A borda HTTP le `multipart/form-data`, valida tamanho, nome e MIME declarado, e
 converte o arquivo para `BytesSource`. Objetos do framework nao vazam para o
 nucleo.
 
-Limitacao atual: sem stream documental real no contrato publico, o arquivo e
-materializado em memoria depois de respeitar o limite configurado.
+Limitacao atual: o adapter multipart inicial materializa o arquivo em memoria
+depois de respeitar o limite configurado. O nucleo recebe somente `BytesSource`,
+nao tipos HTTP.
 
 ## Jobs
 

@@ -25,7 +25,7 @@ API, biblioteca, workers e CLI nunca devem reimplementar a mesma logica.
 |---|---|---|
 | 0 | Organizacao e governanca do projeto | Concluido |
 | 1 | Fundacao tecnica reutilizavel | Planejado |
-| 2 | Ingestao e ciclo de vida do documento | Planejado |
+| 2 | Ingestao e ciclo de vida do documento | Em andamento |
 | 3 | Extracao nativa de PDF | Planejado |
 | 4 | Extracao nativa de Excel | Planejado |
 | 5 | Modelo documental canonico e evidencias | Planejado |
@@ -54,13 +54,8 @@ API, biblioteca, workers e CLI nunca devem reimplementar a mesma logica.
 
 ## Proxima fase recomendada
 
-Com o Bloco 0 concluido, a proxima etapa e o Bloco 1: criar a fundacao tecnica reutilizavel.
-
-Comecar por:
-
-1. Fase 1.1 - estrutura inicial do monorepo.
-2. Fase 1.2 - tipos fundamentais.
-3. Fase 1.3 - contratos de processamento.
+Com as fases 2.1 a 2.4 concluidas, a proxima etapa natural e a Fase 2.5:
+criar o `LocalArtifactStore` sem antecipar persistencia distribuida.
 
 ## Indice detalhado
 
@@ -69,4 +64,3 @@ Veja [phases/README.md](phases/README.md).
 ## Relatorio de conclusao
 
 Veja [phase-0-completion-report.md](phase-0-completion-report.md).
-

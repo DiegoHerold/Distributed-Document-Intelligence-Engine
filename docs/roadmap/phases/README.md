@@ -32,9 +32,24 @@ Dependencia: Bloco 0.
 
 ## Blocos futuros
 
+## Bloco 2 - Ingestao e ciclo de vida do documento
+
+Dependencia: Bloco 1.
+
+| Fase | Entrega | Estado |
+|---|---|---|
+| 2.1 | Criar abstracao `DocumentSource` | Concluida |
+| 2.2 | Criar `SourceResolver` | Concluida |
+| 2.3 | Detectar formato e MIME real | Concluida |
+| 2.4 | Criar hashing e identidade do conteudo | Concluida |
+| 2.5 | Criar `LocalArtifactStore` | Planejada |
+| 2.6 | Registrar documento recebido | Planejada |
+| 2.7 | Criar ciclo de vida local do documento | Planejada |
+| 2.8 | Validacoes iniciais de seguranca | Planejada |
+
 | Bloco | Tema | Dependencia principal | Estado |
 |---|---|---|---|
-| 2 | Ingestao e ciclo de vida do documento | Bloco 1 | Planejado |
+| 2 | Ingestao e ciclo de vida do documento | Bloco 1 | Em andamento |
 | 3 | Extracao nativa de PDF | Blocos 1 e 2 | Planejado |
 | 4 | Extracao nativa de Excel | Blocos 1 e 2 | Planejado |
 | 5 | Modelo documental canonico e evidencias | Blocos 3 e 4 | Planejado |

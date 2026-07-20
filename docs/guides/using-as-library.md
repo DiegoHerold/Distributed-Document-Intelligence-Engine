@@ -69,18 +69,28 @@ Opcoes publicas atuais:
 ## Fontes
 
 ```python
-from eixo import BytesSource, LocalPathSource
+from eixo import DocumentSource
 
-bytes_source = BytesSource(
-    content=b"...",
+bytes_source = DocumentSource.from_bytes(
+    b"...",
     filename="documento.pdf",
     declared_media_type="application/pdf",
 )
 
-path_source = LocalPathSource(path="documento.pdf")
+path_source = DocumentSource.from_path("documento.pdf")
+stream_source = DocumentSource.from_stream(stream, filename="documento.pdf")
 ```
 
-A resolucao real de arquivos e formatos pertence a fases posteriores.
+`DocumentEngine` tambem aceita formas convenientes:
+
+```python
+await engine.inspect("documento.pdf")
+await engine.inspect(b"%PDF-1.7\n")
+```
+
+Internamente, essas entradas sao convertidas para `DocumentSource`, resolvidas
+pelo `SourceResolver`, identificadas por formato real e hash SHA-256, e so entao
+encaminhadas para a capability compativel.
 
 ## Operacoes
 
@@ -104,6 +114,9 @@ await engine.cancel_job(job.job_id)
 | `ExecutionCancelledError` | A execucao foi cancelada | Nao automatico |
 | `ConfigurationError` | A configuracao e invalida | Apos correcao |
 | `ValidationError` | Um contrato ou valor e invalido | Apos correcao |
+| `SourceNotFoundError` | Origem local inexistente | Apos correcao |
+| `SourceNotFileError` | Origem local nao e arquivo | Apos correcao |
+| `SourceNotReadableError` | Origem nao pode ser lida | Depende |
 | `JobNotFoundError` | Job inexistente | Nao |
 | `InvalidStateTransitionError` | Operacao em estado invalido | Depende |
 
@@ -129,4 +142,3 @@ Veja [examples/python-library](../../examples/python-library/README.md).
 ## Limites atuais
 
 Ainda nao existem capabilities reais de PDF, Excel, OCR, renderizacao, layout, templates, schemas de negocio, router, planner ou cliente remoto HTTP.
-

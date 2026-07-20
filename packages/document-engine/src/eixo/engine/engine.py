@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass, field
+from pathlib import Path
+from typing import BinaryIO
 
 from eixo.application import (
     CancelJob,
@@ -26,6 +28,7 @@ from eixo.core import (
     ParseResult,
     ProcessingRequest,
     ProcessingResult,
+    ValidationError,
 )
 from eixo.plugins import Capability, CapabilityRegistry, ProviderDescriptor
 from eixo.runtime.local import LocalRuntime, LocalRuntimeConfig
@@ -33,6 +36,8 @@ from eixo.engine.configuration import LocalEngineConfig
 from eixo.engine.lifecycle import EngineState
 
 logger = logging.getLogger(__name__)
+
+DocumentInput = DocumentSource | str | Path | bytes | bytearray | memoryview | BinaryIO
 
 
 @dataclass(slots=True)
@@ -134,14 +139,17 @@ class DocumentEngine:
 
     async def inspect(
         self,
-        request_or_source: InspectionRequest | DocumentSource,
+        request_or_source: InspectionRequest | DocumentInput,
         *,
         options: dict[str, object] | None = None,
     ) -> InspectionResult:
         request = (
             request_or_source
             if isinstance(request_or_source, InspectionRequest)
-            else InspectionRequest(source=request_or_source, options=options or {})
+            else InspectionRequest(
+                source=self._source_from_input(request_or_source),
+                options=options or {},
+            )
         )
         await self._ensure_running()
         assert self.inspect_document is not None
@@ -152,14 +160,17 @@ class DocumentEngine:
 
     async def parse(
         self,
-        request_or_source: ParseRequest | DocumentSource,
+        request_or_source: ParseRequest | DocumentInput,
         *,
         options: dict[str, object] | None = None,
     ) -> ParseResult:
         request = (
             request_or_source
             if isinstance(request_or_source, ParseRequest)
-            else ParseRequest(source=request_or_source, options=options or {})
+            else ParseRequest(
+                source=self._source_from_input(request_or_source),
+                options=options or {},
+            )
         )
         await self._ensure_running()
         assert self.parse_document is not None
@@ -170,14 +181,17 @@ class DocumentEngine:
 
     async def process(
         self,
-        request_or_source: ProcessingRequest | DocumentSource,
+        request_or_source: ProcessingRequest | DocumentInput,
         *,
         options: dict[str, object] | None = None,
     ) -> ProcessingResult:
         request = (
             request_or_source
             if isinstance(request_or_source, ProcessingRequest)
-            else ProcessingRequest(source=request_or_source, options=options or {})
+            else ProcessingRequest(
+                source=self._source_from_input(request_or_source),
+                options=options or {},
+            )
         )
         await self._ensure_running()
         assert self.process_document is not None
@@ -188,14 +202,17 @@ class DocumentEngine:
 
     async def submit(
         self,
-        request_or_source: ProcessingRequest | DocumentSource,
+        request_or_source: ProcessingRequest | DocumentInput,
         *,
         options: dict[str, object] | None = None,
     ) -> JobResult:
         request = (
             request_or_source
             if isinstance(request_or_source, ProcessingRequest)
-            else ProcessingRequest(source=request_or_source, options=options or {})
+            else ProcessingRequest(
+                source=self._source_from_input(request_or_source),
+                options=options or {},
+            )
         )
         await self._ensure_running()
         assert self.submit_processing_job is not None
@@ -243,6 +260,17 @@ class DocumentEngine:
 
     def _job_id(self, job_id: JobId | str) -> JobId:
         return job_id if isinstance(job_id, JobId) else JobId.parse(job_id)
+
+    def _source_from_input(self, value: DocumentInput) -> DocumentSource:
+        if isinstance(value, DocumentSource):
+            return value
+        if isinstance(value, (str, Path)):
+            return DocumentSource.from_path(value)
+        if isinstance(value, (bytes, bytearray, memoryview)):
+            return DocumentSource.from_bytes(value)
+        if hasattr(value, "read"):
+            return DocumentSource.from_stream(value)
+        raise ValidationError("Unsupported document source input")
 
     def _log(self, event: str, **fields: str) -> None:
         logger.info(event, extra={"event": event, **fields})

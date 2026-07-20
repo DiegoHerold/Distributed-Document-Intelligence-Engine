@@ -1,9 +1,15 @@
 from __future__ import annotations
 
 import asyncio
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from pathlib import PurePath
 
+from eixo.application.ingestion import (
+    ContentIdentityService,
+    LocalSourceResolver,
+    SourceResolver,
+    enrich_source_with_identity,
+)
 from eixo.core import (
     CapabilityNotFoundError,
     ErrorCategory,
@@ -23,6 +29,9 @@ from eixo.core import (
     ProcessingRequest,
     ProcessingResult,
     ProcessingStatus,
+    DetectedDocumentFormat,
+    DocumentFormat,
+    IdentifiedDocumentContent,
     UnsupportedFormatError,
     ValidationError,
     isoformat_utc,
@@ -52,6 +61,8 @@ def context_from_request(
 class CapabilityBackedDocumentService:
     registry: CapabilityRegistry
     runtime: ExecutionRuntime
+    source_resolver: SourceResolver = field(default_factory=LocalSourceResolver)
+    content_identifier: ContentIdentityService = field(default_factory=ContentIdentityService)
 
     async def inspect(self, request: InspectionRequest) -> InspectionResult:
         return await self._execute(
@@ -81,17 +92,25 @@ class CapabilityBackedDocumentService:
         input_contract: str,
         output_contract: str,
     ):
-        capability = self.registry.resolve(
-            document_format=document_format_from_request(request),
-            media_type=request.source.declared_media_type,
-            input_contract=input_contract,
-            output_contract=output_contract,
-        )
-        result = await self.runtime.execute_capability(
-            capability,
-            request,
-            context=context_from_request(request),
-        )
+        async with self.source_resolver.resolve(request.source) as resolved:
+            identified = await self.content_identifier.identify(resolved)
+            request = request_with_identified_source(request, identified)
+            detected_format = document_format_from_detection(identified.identity.detected_format)
+            media_type = (
+                identified.identity.detected_format.canonical_mime
+                or request.source.declared_media_type
+            )
+            capability = self.registry.resolve(
+                document_format=detected_format or document_format_from_request(request),
+                media_type=media_type,
+                input_contract=input_contract,
+                output_contract=output_contract,
+            )
+            result = await self.runtime.execute_capability(
+                capability,
+                request,
+                context=context_from_request(request),
+            )
         if result.status != ExecutionStatus.COMPLETED:
             if result.error is not None:
                 if result.error.code == ExecutionTimeoutError.code:
@@ -289,8 +308,24 @@ def document_format_from_request(
     return suffix.lstrip(".") or None
 
 
+def document_format_from_detection(value: DetectedDocumentFormat) -> str | None:
+    if value.format == DocumentFormat.UNKNOWN:
+        return None
+    return value.format.value
+
+
+def request_with_identified_source(
+    request: InspectionRequest | ParseRequest | ProcessingRequest,
+    identified: IdentifiedDocumentContent,
+) -> InspectionRequest | ParseRequest | ProcessingRequest:
+    source = enrich_source_with_identity(request.source, identified)
+    return replace(request, source=source)
+
+
 __all__ = [
     "CapabilityBackedDocumentService",
     "InMemoryJobService",
     "context_from_request",
+    "document_format_from_detection",
+    "request_with_identified_source",
 ]

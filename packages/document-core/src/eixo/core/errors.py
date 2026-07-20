@@ -51,6 +51,24 @@ class ValidationError(EixoError):
     category = ErrorCategory.VALIDATION
 
 
+class SourceResolutionError(EixoError):
+    code = "source.resolution_failed"
+    category = ErrorCategory.VALIDATION
+
+
+class SourceNotFoundError(SourceResolutionError):
+    code = "source.not_found"
+    category = ErrorCategory.NOT_FOUND
+
+
+class SourceNotFileError(SourceResolutionError):
+    code = "source.not_file"
+
+
+class SourceNotReadableError(SourceResolutionError):
+    code = "source.not_readable"
+
+
 class ConfigurationError(EixoError):
     code = "configuration.error"
     category = ErrorCategory.CONFIGURATION

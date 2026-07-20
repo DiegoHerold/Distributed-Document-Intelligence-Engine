@@ -1,3 +1,14 @@
+from eixo.application.ingestion import (
+    ContentHasher,
+    ContentIdentityService,
+    DocumentFormatDetector,
+    LocalSourceResolver,
+    MagicBytesDocumentFormatDetector,
+    ResolvedDocumentSource,
+    Sha256ContentHasher,
+    SourceResolver,
+    enrich_source_with_identity,
+)
 from eixo.application.ports import (
     InspectionService,
     JobExecutor,
@@ -20,6 +31,9 @@ from eixo.application.use_cases import (
 __all__ = [
     "CancelJob",
     "CapabilityBackedDocumentService",
+    "ContentHasher",
+    "ContentIdentityService",
+    "DocumentFormatDetector",
     "GetJobResult",
     "GetJobStatus",
     "GetJobStatus",
@@ -28,10 +42,16 @@ __all__ = [
     "InMemoryJobService",
     "JobExecutor",
     "JobRepository",
+    "LocalSourceResolver",
+    "MagicBytesDocumentFormatDetector",
     "ParseDocument",
     "ParsingService",
     "ProcessDocument",
     "ProcessingService",
+    "ResolvedDocumentSource",
     "ResultRepository",
+    "Sha256ContentHasher",
+    "SourceResolver",
     "SubmitProcessingJob",
+    "enrich_source_with_identity",
 ]

@@ -11,6 +11,9 @@ from eixo import (
     ExecutionTimeoutError,
     InvalidStateTransitionError,
     JobNotFoundError,
+    SourceNotFileError,
+    SourceNotFoundError,
+    SourceNotReadableError,
     UnsupportedFormatError,
     ValidationError,
 )
@@ -29,7 +32,11 @@ def exit_code_for_error(error: BaseException) -> ExitCode:
         return ExitCode.INVALID_ARGUMENTS
     if isinstance(error, FileNotFoundError):
         return ExitCode.SOURCE_NOT_FOUND
+    if isinstance(error, SourceNotFoundError):
+        return ExitCode.SOURCE_NOT_FOUND
     if isinstance(error, IsADirectoryError):
+        return ExitCode.INVALID_ARGUMENTS
+    if isinstance(error, (SourceNotFileError, SourceNotReadableError)):
         return ExitCode.INVALID_ARGUMENTS
     if isinstance(error, UnsupportedFormatError):
         return ExitCode.UNSUPPORTED_FORMAT
@@ -55,8 +62,14 @@ def exit_code_for_error(error: BaseException) -> ExitCode:
 def user_message_for_error(error: BaseException) -> str:
     if isinstance(error, FileNotFoundError):
         return f'Erro: nao foi possivel localizar o arquivo "{error.args[0]}".'
+    if isinstance(error, SourceNotFoundError):
+        return "Erro: nao foi possivel localizar a origem do documento."
     if isinstance(error, IsADirectoryError):
         return f'Erro: o caminho "{error.args[0]}" nao e um arquivo.'
+    if isinstance(error, SourceNotFileError):
+        return "Erro: a origem do documento nao e um arquivo."
+    if isinstance(error, SourceNotReadableError):
+        return "Erro: a origem do documento nao pode ser lida."
     if isinstance(error, CapabilityNotFoundError):
         return "Erro: capability necessaria nao encontrada."
     if isinstance(error, JobNotFoundError):

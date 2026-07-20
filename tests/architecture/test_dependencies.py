@@ -42,6 +42,23 @@ def test_core_does_not_import_adapters_or_apps() -> None:
     assert "eixo_cli" not in imports
 
 
+def test_http_upload_types_stay_outside_kernel_and_application() -> None:
+    forbidden_names = {"UploadFile", "Request", "FormData"}
+    for base in (
+        ROOT / "packages/document-core/src",
+        ROOT / "packages/document-application/src",
+        ROOT / "packages/document-engine/src",
+    ):
+        for file in base.rglob("*.py"):
+            tree = ast.parse(file.read_text(encoding="utf-8"))
+            names = {
+                node.id
+                for node in ast.walk(tree)
+                if isinstance(node, ast.Name)
+            }
+            assert names.isdisjoint(forbidden_names)
+
+
 def test_document_engine_has_no_transport_or_infrastructure_imports() -> None:
     forbidden = {
         "fastapi",

@@ -16,6 +16,10 @@ from eixo.core import (
     InvalidStateTransitionError,
     JobNotFoundError,
     RuntimeShutdownError,
+    SourceNotFileError,
+    SourceNotFoundError,
+    SourceNotReadableError,
+    SourceResolutionError,
     UnsupportedFormatError,
     ValidationError,
 )
@@ -36,7 +40,10 @@ __all__ = [
     "InvalidStateTransitionError",
     "JobNotFoundError",
     "RuntimeShutdownError",
+    "SourceNotFileError",
+    "SourceNotFoundError",
+    "SourceNotReadableError",
+    "SourceResolutionError",
     "UnsupportedFormatError",
     "ValidationError",
 ]
-

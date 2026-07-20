@@ -2,27 +2,94 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Literal
+from typing import Any, BinaryIO, ClassVar, Literal
 
 from eixo.core.enums import ErrorCategory, JobStatus, ProcessingStatus, ResultStatus
 from eixo.core.ids import ArtifactId, CorrelationId, DocumentId, JobId, TenantId
 from eixo.core.metadata import ExecutionMetadata
-from eixo.core.serialization import Serializable
+from eixo.core.serialization import Serializable, to_jsonable
 from eixo.core.versions import ContractVersion
 from eixo.core.warnings import EixoWarning
 
 
 @dataclass(frozen=True, slots=True)
 class DocumentSource(Serializable):
+    _kind: ClassVar[str] = "document"
+
     source_type: str
     filename: str | None = None
     declared_media_type: str | None = None
+    declared_extension: str | None = None
     size: int | None = None
+    origin_reference: str | None = None
     metadata: dict[str, str] = field(default_factory=dict)
+
+    @classmethod
+    def from_path(
+        cls,
+        path: str | Path,
+        *,
+        filename: str | None = None,
+        declared_media_type: str | None = None,
+        metadata: dict[str, str] | None = None,
+    ) -> "LocalPathSource":
+        path_value = Path(path)
+        return LocalPathSource(
+            path=path_value,
+            filename=filename or path_value.name,
+            declared_media_type=declared_media_type,
+            declared_extension=normalize_extension(path_value.suffix),
+            origin_reference=str(path),
+            metadata=metadata or {},
+        )
+
+    @classmethod
+    def from_bytes(
+        cls,
+        content: bytes | bytearray | memoryview,
+        *,
+        filename: str | None = None,
+        declared_mime: str | None = None,
+        declared_media_type: str | None = None,
+        metadata: dict[str, str] | None = None,
+    ) -> "BytesSource":
+        value = bytes(content)
+        return BytesSource(
+            content=value,
+            filename=filename,
+            declared_media_type=declared_media_type or declared_mime,
+            declared_extension=extension_from_filename(filename),
+            size=len(value),
+            metadata=metadata or {},
+        )
+
+    @classmethod
+    def from_stream(
+        cls,
+        stream: BinaryIO,
+        *,
+        filename: str | None = None,
+        declared_mime: str | None = None,
+        declared_media_type: str | None = None,
+        size: int | None = None,
+        close_on_cleanup: bool = False,
+        metadata: dict[str, str] | None = None,
+    ) -> "StreamSource":
+        return StreamSource(
+            stream=stream,
+            filename=filename,
+            declared_media_type=declared_media_type or declared_mime,
+            declared_extension=extension_from_filename(filename),
+            size=size,
+            close_on_cleanup=close_on_cleanup,
+            metadata=metadata or {},
+        )
 
     def __post_init__(self) -> None:
         if self.size is not None and self.size < 0:
             raise ValueError("size cannot be negative")
+        if self.declared_extension is not None and not self.declared_extension.startswith("."):
+            raise ValueError("declared_extension must start with '.'")
 
 
 @dataclass(frozen=True, slots=True)
@@ -45,6 +112,32 @@ class BytesSource(DocumentSource):
         DocumentSource.__post_init__(self)
         if self.size is not None and self.size != len(self.content):
             raise ValueError("size must match content length")
+
+
+@dataclass(frozen=True, slots=True)
+class StreamSource(DocumentSource):
+    stream: BinaryIO | None = field(default=None, repr=False, compare=False)
+    close_on_cleanup: bool = False
+    source_type: Literal["stream"] = "stream"
+
+    def __post_init__(self) -> None:
+        DocumentSource.__post_init__(self)
+        if self.stream is None:
+            raise ValueError("stream is required")
+        if not hasattr(self.stream, "read"):
+            raise ValueError("stream must be readable")
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "source_type": self.source_type,
+            "filename": self.filename,
+            "declared_media_type": self.declared_media_type,
+            "declared_extension": self.declared_extension,
+            "size": self.size,
+            "origin_reference": self.origin_reference,
+            "close_on_cleanup": self.close_on_cleanup,
+            "metadata": to_jsonable(self.metadata),
+        }
 
 
 @dataclass(frozen=True, slots=True)
@@ -158,3 +251,18 @@ class JobResult(Serializable):
     def __post_init__(self) -> None:
         if self.progress < 0.0 or self.progress > 1.0:
             raise ValueError("progress must be between 0 and 1")
+
+
+def normalize_extension(value: str | None) -> str | None:
+    if value is None:
+        return None
+    cleaned = value.strip().lower()
+    if not cleaned:
+        return None
+    return cleaned if cleaned.startswith(".") else f".{cleaned}"
+
+
+def extension_from_filename(filename: str | None) -> str | None:
+    if filename is None:
+        return None
+    return normalize_extension(Path(filename).suffix)

@@ -13,13 +13,17 @@ from eixo import DocumentEngine, ProcessingRequest
 ## Local Usage
 
 ```python
-from eixo import BytesSource, DocumentEngine, ProcessingRequest
+from eixo import DocumentEngine, DocumentSource, ProcessingRequest
 
-source = BytesSource(content=b"example", filename="example.bin", size=7)
+source = DocumentSource.from_bytes(b"example", filename="example.bin")
 
 async with DocumentEngine.local() as engine:
     result = await engine.process(ProcessingRequest(source=source))
 ```
+
+`DocumentEngine` also accepts convenient path and bytes inputs, such as
+`await engine.inspect("document.pdf")`, and converts them to typed
+`DocumentSource` contracts internally.
 
 Without a registered capability, methods raise `CapabilityNotFoundError`. Real PDF, Excel, OCR, layout and semantic capabilities are not implemented yet.
 
@@ -29,9 +33,8 @@ The package includes `py.typed` and reexports typed contracts from the core pack
 
 ## Errors
 
-Public errors are reexported from `eixo`, including `EixoError`, `CapabilityNotFoundError`, `ExecutionTimeoutError`, `ExecutionCancelledError`, `ConfigurationError`, `ValidationError`, `JobNotFoundError` and `InvalidStateTransitionError`.
+Public errors are reexported from `eixo`, including `EixoError`, `CapabilityNotFoundError`, `ExecutionTimeoutError`, `ExecutionCancelledError`, `ConfigurationError`, `ValidationError`, `SourceNotFoundError`, `SourceNotFileError`, `SourceNotReadableError`, `JobNotFoundError` and `InvalidStateTransitionError`.
 
 ## Dependencies
 
 The SDK remains lightweight. It does not install OCR, CUDA, databases, Redis, MinIO, Temporal or model dependencies.
-

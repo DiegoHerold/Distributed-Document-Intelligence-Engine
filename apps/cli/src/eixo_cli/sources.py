@@ -2,22 +2,17 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from eixo import LocalPathSource
+from eixo import DocumentSource, LocalPathSource
 
 
 def local_path_source(path: str) -> LocalPathSource:
     resolved = Path(path).expanduser()
-    if not resolved.exists():
-        raise FileNotFoundError(path)
-    if not resolved.is_file():
-        raise IsADirectoryError(path)
-    return LocalPathSource(
-        path=resolved,
-        filename=resolved.name,
+    source = DocumentSource.from_path(
+        resolved,
         declared_media_type=guess_media_type(resolved),
-        size=resolved.stat().st_size,
         metadata={"source": "cli"},
     )
+    return source
 
 
 def guess_media_type(path: Path) -> str | None:

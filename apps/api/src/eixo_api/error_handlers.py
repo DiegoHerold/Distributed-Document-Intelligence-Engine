@@ -19,6 +19,10 @@ from eixo.core import (
     ExecutionTimeoutError,
     InvalidStateTransitionError,
     JobNotFoundError,
+    SourceNotFileError,
+    SourceNotFoundError,
+    SourceNotReadableError,
+    SourceResolutionError,
     UnsupportedFormatError,
     ValidationError,
 )
@@ -31,6 +35,10 @@ logger = logging.getLogger(__name__)
 ERROR_STATUS: tuple[tuple[type[EixoError], int], ...] = (
     (UploadTooLargeError, 413),
     (ValidationError, 422),
+    (SourceNotFoundError, 404),
+    (SourceNotFileError, 422),
+    (SourceNotReadableError, 422),
+    (SourceResolutionError, 422),
     (CapabilityNotFoundError, 422),
     (UnsupportedFormatError, 415),
     (JobNotFoundError, 404),

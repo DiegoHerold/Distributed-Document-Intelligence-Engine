@@ -20,11 +20,15 @@ Fontes iniciais:
 
 - `LocalPathSource`;
 - `BytesSource`;
+- `StreamSource`;
 - `ArtifactReferenceSource`.
 
 Objetos de transporte, como `UploadFile` do FastAPI, nao fazem parte deste contrato.
+Sources descrevem a origem e nao abrem arquivos durante a construcao.
+
+O fluxo compartilhado resolve a origem, detecta formato real e calcula
+identidade de conteudo antes de executar a capability compativel.
 
 ## Limitacoes atuais
 
 O contrato existe, mas ainda nao ha parser real de PDF, Excel, OCR ou processamento semantico.
-

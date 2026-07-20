@@ -38,6 +38,8 @@ Consumidores fora do kernel:
 Pertence ao Kernel v0:
 
 - `DocumentSource`;
+- `LocalPathSource`, `BytesSource`, `StreamSource` e `ArtifactReferenceSource`;
+- `DetectedDocumentFormat`, `ContentHash`, `ContentMetadata` e `DocumentIdentity`;
 - `InspectionRequest` e `InspectionResult`;
 - `ParseRequest` e `ParseResult`;
 - `ProcessingRequest` e `ProcessingResult`;
@@ -129,8 +131,12 @@ Fluxo minimo:
 
 ```text
 receber contrato
+  -> adaptar entrada publica para DocumentSource, quando necessario
+  -> resolver fonte
+  -> detectar formato real
+  -> calcular hash e identidade de conteudo
   -> criar ExecutionContext
-  -> resolver capability por contrato, MIME e formato quando aplicavel
+  -> resolver capability por contrato, MIME canonico e formato detectado
   -> criar ExecutionTask
   -> executar via LocalRuntime
   -> converter falha para erro tipado
@@ -253,6 +259,20 @@ argumentos -> contrato -> DocumentEngine -> console/JSON
 
 Nenhum desses canais deve implementar regras documentais ou resolver stores
 diretamente.
+
+## Ingestao Inicial
+
+As fases 2.1 a 2.4 adicionam o fluxo compartilhado de ingestao e identidade de
+conteudo. A documentacao detalhada esta em
+[ingestion-and-content-identity.md](ingestion-and-content-identity.md).
+
+Regras principais:
+
+- `DocumentSource` descreve origem, mas nao abre arquivo;
+- `SourceResolver` controla abertura, stream e cleanup;
+- deteccao nao confia apenas em extensao ou MIME declarado;
+- SHA-256 e calculado sobre bytes reais em chunks;
+- `DocumentId` nao e igual ao hash e continua reservado para persistencia futura.
 
 ## Diagnostico Do Estado Atual
 
