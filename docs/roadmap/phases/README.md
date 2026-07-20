@@ -44,7 +44,7 @@ Dependencia: Bloco 1.
 | 2.4 | Criar hashing e identidade do conteudo | Concluida |
 | 2.5 | Criar `LocalArtifactStore` | Concluida |
 | 2.6 | Criar ciclo de vida do documento | Concluida |
-| 2.7 | Criar jobs locais persistentes | Planejada |
+| 2.7 | Criar jobs locais persistentes | Concluida |
 | 2.8 | Validacoes iniciais de seguranca | Planejada |
 
 | Bloco | Tema | Dependencia principal | Estado |

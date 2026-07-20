@@ -123,6 +123,11 @@ Respostas de erro usam `ErrorResult`.
 | `CapabilityNotFoundError` | 422 |
 | `UnsupportedFormatError` | 415 |
 | `JobNotFoundError` | 404 |
+| `JobResultUnavailableError` | 409 |
+| `InvalidJobTransitionError` | 409 |
+| `JobConcurrencyError` | 409 |
+| `JobPersistenceError` | 503 |
+| `JobRecoveryError` | 503 |
 | `InvalidStateTransitionError` | 409 |
 | `ExecutionTimeoutError` | 504 |
 | `ExecutionCancelledError` | 409 |
@@ -151,6 +156,6 @@ A interface interativa fica em:
 
 ## Limites
 
-A v1 inicial nao inclui autenticacao, tenants obrigatorios, persistencia
-duravel, object storage, workers remotos, webhooks, streaming ou providers
+A v1 inicial nao inclui autenticacao, tenants obrigatorios, persistencia de
+producao, object storage, workers remotos, webhooks, streaming ou providers
 documentais reais.

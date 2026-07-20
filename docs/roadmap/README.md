@@ -54,8 +54,9 @@ API, biblioteca, workers e CLI nunca devem reimplementar a mesma logica.
 
 ## Proxima fase recomendada
 
-Com as fases 2.5 e 2.6 concluidas, a proxima etapa natural e a Fase 2.7:
-evoluir jobs locais persistentes sem misturar `DocumentStatus` e `JobStatus`.
+Com a Fase 2.7 concluida, a proxima etapa natural e a Fase 2.8:
+validacoes iniciais de seguranca sobre entrada, caminhos locais, limites e
+superficie publica.
 
 ## Indice detalhado
 

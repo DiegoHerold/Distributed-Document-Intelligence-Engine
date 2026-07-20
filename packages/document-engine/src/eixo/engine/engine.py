@@ -11,10 +11,11 @@ from eixo.application import (
     GetJobResult,
     GetJobStatus,
     IngestDocument,
-    InMemoryJobService,
+    PersistentJobService,
     InspectDocument,
     ParseDocument,
     ProcessDocument,
+    SQLiteJobStore,
     SubmitProcessingJob,
 )
 from eixo.core import (
@@ -67,15 +68,19 @@ class DocumentEngine:
         providers: tuple[ProviderDescriptor, ...] = (),
         capabilities: tuple[Capability[object, object], ...] = (),
         data_directory: str | Path | None = None,
+        job_database_path: str | Path | None = None,
         max_concurrent_tasks: int | None = None,
         default_timeout: float | None = None,
     ) -> "DocumentEngine":
         if config is not None:
-            engine_config = (
-                replace(config, data_directory=Path(data_directory))
-                if data_directory is not None
-                else config
-            )
+            engine_config = config
+            if data_directory is not None:
+                engine_config = replace(engine_config, data_directory=Path(data_directory))
+            if job_database_path is not None:
+                engine_config = replace(
+                    engine_config,
+                    job_database_path=Path(job_database_path),
+                )
         else:
             engine_config = LocalEngineConfig(
                 runtime=runtime_config
@@ -85,6 +90,9 @@ class DocumentEngine:
                 ),
                 data_directory=(
                     Path(data_directory) if data_directory is not None else Path(".eixo/local")
+                ),
+                job_database_path=(
+                    Path(job_database_path) if job_database_path is not None else None
                 ),
             )
         if runtime is None:
@@ -100,7 +108,14 @@ class DocumentEngine:
             runtime=runtime,
             ingest_document=ingest_document,
         )
-        jobs = InMemoryJobService(processing_service=service, runtime=runtime)
+        jobs = PersistentJobService(
+            processing_service=service,
+            runtime=runtime,
+            store=SQLiteJobStore(
+                engine_config.job_database_path
+                or engine_config.data_directory / "jobs" / "jobs.sqlite3"
+            ),
+        )
         return cls(
             registry=registry,
             runtime=runtime,

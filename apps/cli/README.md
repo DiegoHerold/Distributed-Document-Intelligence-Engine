@@ -87,11 +87,13 @@ grava JSON UTF-8 e nao sobrescreve arquivos sem `--force`.
 
 ## Jobs
 
-Nesta fase, jobs e resultados ficam em memoria no `DocumentEngine.local()`.
-Como cada invocacao da CLI inicia um novo processo, jobs criados por
-`eixo process --no-wait` nao sao duraveis entre chamadas. Os comandos `jobs`
-ja existem para o contrato oficial e para testes, mas persistencia real fica
-para fases futuras.
+Jobs e resultados estruturados pequenos sao persistidos pelo
+`DocumentEngine.local()` em SQLite. A CLI continua sem acessar stores
+diretamente: `eixo jobs status`, `eixo jobs result` e `eixo jobs cancel` chamam
+a fachada publica.
+
+Esta persistencia e local e adequada para desenvolvimento. Persistencia
+distribuida, API remota na CLI e workers de producao continuam fora desta fase.
 
 ## Limitacoes atuais
 
@@ -99,5 +101,5 @@ para fases futuras.
 - sem OCR;
 - sem runtime distribuido;
 - sem API remota na CLI;
-- sem persistencia duravel de jobs;
+- sem persistencia distribuida de jobs;
 - sem autocomplete avancado.

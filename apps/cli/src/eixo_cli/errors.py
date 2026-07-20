@@ -14,7 +14,12 @@ from eixo import (
     ExecutionCancelledError,
     ExecutionTimeoutError,
     InvalidStateTransitionError,
+    InvalidJobTransitionError,
     JobNotFoundError,
+    JobAlreadyExistsError,
+    JobConcurrencyError,
+    JobPersistenceError,
+    JobResultUnavailableError,
     SourceNotFileError,
     SourceNotFoundError,
     SourceNotReadableError,
@@ -48,6 +53,12 @@ def exit_code_for_error(error: BaseException) -> ExitCode:
         return ExitCode.CAPABILITY_UNAVAILABLE
     if isinstance(error, JobNotFoundError):
         return ExitCode.JOB_NOT_FOUND
+    if isinstance(error, JobResultUnavailableError):
+        return ExitCode.PROCESSING_FAILED
+    if isinstance(error, (JobAlreadyExistsError, InvalidJobTransitionError, JobConcurrencyError)):
+        return ExitCode.PROCESSING_FAILED
+    if isinstance(error, JobPersistenceError):
+        return ExitCode.PROCESSING_FAILED
     if isinstance(error, (ArtifactNotFoundError, DocumentNotFoundError)):
         return ExitCode.SOURCE_NOT_FOUND
     if isinstance(error, DocumentVersionConflictError):
@@ -84,6 +95,16 @@ def user_message_for_error(error: BaseException) -> str:
         return "Erro: capability necessaria nao encontrada."
     if isinstance(error, JobNotFoundError):
         return "Erro: job nao encontrado."
+    if isinstance(error, JobResultUnavailableError):
+        return "Erro: resultado do job ainda nao esta disponivel."
+    if isinstance(error, JobAlreadyExistsError):
+        return "Erro: job ja existe."
+    if isinstance(error, InvalidJobTransitionError):
+        return "Erro: transicao de job invalida."
+    if isinstance(error, JobConcurrencyError):
+        return "Erro: conflito de atualizacao do job."
+    if isinstance(error, JobPersistenceError):
+        return "Erro: falha na persistencia do job."
     if isinstance(error, ArtifactNotFoundError):
         return "Erro: artefato nao encontrado."
     if isinstance(error, DocumentNotFoundError):

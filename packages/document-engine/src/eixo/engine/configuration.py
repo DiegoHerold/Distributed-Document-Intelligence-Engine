@@ -11,7 +11,10 @@ class LocalEngineConfig:
     runtime: LocalRuntimeConfig = field(default_factory=LocalRuntimeConfig)
     auto_start: bool = True
     data_directory: Path = field(default_factory=lambda: Path(".eixo/local"))
+    job_database_path: Path | None = None
 
     def __post_init__(self) -> None:
         if not str(self.data_directory).strip():
             raise ValueError("data_directory is required")
+        if self.job_database_path is not None and not str(self.job_database_path).strip():
+            raise ValueError("job_database_path cannot be empty")

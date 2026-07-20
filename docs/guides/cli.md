@@ -84,6 +84,9 @@ eixo jobs cancel job_123
 Os comandos chamam `DocumentEngine.get_job_status()`,
 `DocumentEngine.get_job_result()` e `DocumentEngine.cancel_job()`.
 
+Jobs locais sao persistidos no `data_directory` do engine por SQLite. A CLI
+continua sem acessar o banco diretamente; ela sempre passa pela fachada publica.
+
 ## Formatos de saida
 
 Console:
@@ -132,5 +135,5 @@ eixo inspect documento.pdf --debug
 ## Limitacoes
 
 Ainda nao existem capabilities reais de PDF, Excel, OCR, layout, tabelas ou IA
-semantica. Jobs e resultados sao em memoria e nao sobrevivem a uma nova
-invocacao do processo da CLI.
+semantica. Jobs e resultados usam persistencia local simples em SQLite, mas
+ainda nao ha API remota na CLI nem persistencia distribuida de producao.

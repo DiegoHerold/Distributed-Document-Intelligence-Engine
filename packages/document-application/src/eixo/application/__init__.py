@@ -15,6 +15,14 @@ from eixo.application.ingestion import (
     SourceResolver,
     enrich_source_with_identity,
 )
+from eixo.application.jobs import (
+    JobStore,
+    JobTransitionPolicy,
+    LocalJobRecoveryService,
+    SQLiteJobStore,
+    job_to_result,
+    new_job_record,
+)
 from eixo.application.ports import (
     InspectionService,
     JobExecutor,
@@ -23,7 +31,11 @@ from eixo.application.ports import (
     ProcessingService,
     ResultRepository,
 )
-from eixo.application.services import CapabilityBackedDocumentService, InMemoryJobService
+from eixo.application.services import (
+    CapabilityBackedDocumentService,
+    InMemoryJobService,
+    PersistentJobService,
+)
 from eixo.application.use_cases import (
     CancelJob,
     GetJobResult,
@@ -44,24 +56,30 @@ __all__ = [
     "DocumentRepository",
     "GetJobResult",
     "GetJobStatus",
-    "GetJobStatus",
     "InspectDocument",
     "InspectionService",
     "IngestDocument",
     "InMemoryJobService",
     "JobExecutor",
     "JobRepository",
-    "LocalSourceResolver",
+    "JobStore",
+    "JobTransitionPolicy",
     "LocalDocumentRepository",
+    "LocalJobRecoveryService",
+    "LocalSourceResolver",
     "MagicBytesDocumentFormatDetector",
     "ParseDocument",
     "ParsingService",
+    "PersistentJobService",
     "ProcessDocument",
     "ProcessingService",
     "ResolvedDocumentSource",
     "ResultRepository",
+    "SQLiteJobStore",
     "Sha256ContentHasher",
     "SourceResolver",
     "SubmitProcessingJob",
     "enrich_source_with_identity",
+    "job_to_result",
+    "new_job_record",
 ]

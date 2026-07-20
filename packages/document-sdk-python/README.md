@@ -28,6 +28,11 @@ async with DocumentEngine.local() as engine:
 Use `await engine.ingest(source)` to store the original locally and create a
 `DocumentRecord` with status `stored` before any parsing capability exists.
 
+Jobs submitted through `await engine.submit(...)` are persisted by the local
+engine in SQLite. Completed local job status and small structured results can
+be read by a later `DocumentEngine.local()` instance that uses the same data
+directory.
+
 Without a registered capability, methods raise `CapabilityNotFoundError`. Real PDF, Excel, OCR, layout and semantic capabilities are not implemented yet.
 
 ## Typing
@@ -37,7 +42,7 @@ including artifact references and document lifecycle models.
 
 ## Errors
 
-Public errors are reexported from `eixo`, including `EixoError`, `CapabilityNotFoundError`, `ExecutionTimeoutError`, `ExecutionCancelledError`, `ConfigurationError`, `ValidationError`, `SourceNotFoundError`, `SourceNotFileError`, `SourceNotReadableError`, `JobNotFoundError` and `InvalidStateTransitionError`.
+Public errors are reexported from `eixo`, including `EixoError`, `CapabilityNotFoundError`, `ExecutionTimeoutError`, `ExecutionCancelledError`, `ConfigurationError`, `ValidationError`, `SourceNotFoundError`, `SourceNotFileError`, `SourceNotReadableError`, `JobNotFoundError`, `JobResultUnavailableError`, `InvalidJobTransitionError`, `JobConcurrencyError`, `JobPersistenceError` and `InvalidStateTransitionError`.
 
 ## Dependencies
 

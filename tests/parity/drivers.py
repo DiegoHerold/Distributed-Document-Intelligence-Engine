@@ -14,9 +14,12 @@ import eixo
 from eixo import (
     DocumentEngine,
     InspectionRequest,
+    JobId,
+    JobStatus,
     ParseRequest,
     ProcessingRequest,
 )
+from eixo.application import JobTransitionPolicy, new_job_record
 from eixo_api import create_app
 from eixo_cli.main import main as cli_main
 from tests.parity.fake_capabilities import error_to_result, parity_engine
@@ -231,21 +234,9 @@ class CLIParityDriver:
     def _cancel_sync(self, fixture: ParityFixture) -> Any:
         persistent = PersistentCliEngine(parity_engine(timeout=self.timeout))
         try:
-            job = run_cli_json(
-                [
-                    "process",
-                    str(fixture.path),
-                    "--profile",
-                    fixture.profile,
-                    "--no-wait",
-                    "--format",
-                    "json",
-                ],
-                timeout=self.timeout,
-                engine_factory=lambda: persistent,
-            )
+            job_id = asyncio.run(seed_queued_job(persistent, fixture))
             return run_cli_json(
-                ["jobs", "cancel", job["job_id"], "--format", "json"],
+                ["jobs", "cancel", job_id, "--format", "json"],
                 timeout=self.timeout,
                 engine_factory=lambda: persistent,
             )
@@ -315,6 +306,23 @@ async def seed_completed_job(engine, fixture: ParityFixture) -> str:
     )
     await wait_library_job(engine, str(job.job_id))
     return str(job.job_id)
+
+
+async def seed_queued_job(engine, fixture: ParityFixture) -> str:
+    await engine.__aenter__()
+    job_id = JobId.new()
+    request = ProcessingRequest(source=fixture.source(), profile=fixture.profile)
+    policy = JobTransitionPolicy.default()
+    created = new_job_record(job_id, request, operation="process")
+    queued = policy.transition(created, to_status=JobStatus.QUEUED, stage="queued")
+    requested = policy.transition(
+        queued,
+        to_status=JobStatus.CANCEL_REQUESTED,
+        stage="cancelling",
+    )
+    job_service = engine.submit_processing_job.executor
+    await job_service.store.create(requested)
+    return str(job_id)
 
 
 class PersistentCliEngine:

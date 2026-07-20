@@ -37,7 +37,7 @@ http://localhost:8000/docs
 - CORS restritivo e desabilitado por padrao;
 - `max_upload_size`;
 - `request_timeout`;
-- `local_data_dir`, usado pelo storage local de artefatos e documentos.
+- `local_data_dir`, usado pelo storage local de artefatos, documentos e jobs.
 
 PostgreSQL, Redis, MinIO, Temporal, API keys, tenants obrigatorios e rate
 limiting distribuido nao fazem parte desta fase.
@@ -75,9 +75,12 @@ nao tipos HTTP.
 
 ## Jobs
 
-Jobs e resultados ficam em memoria dentro do engine local. Eles sao adequados
-para desenvolvimento e testes, mas sao perdidos ao reiniciar o processo.
-Documentos e artefatos originais ficam no `local_data_dir` configurado.
+Jobs e resultados estruturados pequenos ficam em SQLite dentro do engine local.
+Eles sobrevivem a uma nova instancia simples usando o mesmo `local_data_dir`.
+Documentos e artefatos originais tambem ficam no `local_data_dir` configurado.
+
+Esta persistencia e local. PostgreSQL, filas distribuidas e workers remotos
+continuam fora desta fase.
 
 ## Erros
 
@@ -92,6 +95,11 @@ Mapeamentos principais:
 - `ArtifactNotFoundError`: 404
 - `DocumentVersionConflictError`: 409
 - `JobNotFoundError`: 404
+- `JobResultUnavailableError`: 409
+- `JobConcurrencyError`: 409
+- `InvalidJobTransitionError`: 409
+- `JobPersistenceError`: 503
+- `JobRecoveryError`: 503
 - `InvalidStateTransitionError`: 409
 - `ExecutionTimeoutError`: 504
 - `ExecutionRejectedError`: 503

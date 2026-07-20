@@ -45,6 +45,7 @@ from eixo import DocumentEngine, LocalEngineConfig, LocalRuntimeConfig
 
 engine = DocumentEngine.local(
     data_directory=".eixo/local",
+    job_database_path=".eixo/local/jobs/jobs.sqlite3",
     config=LocalEngineConfig(
         runtime=LocalRuntimeConfig(
             max_concurrent_tasks=4,
@@ -61,6 +62,7 @@ engine = DocumentEngine.local(
 Opcoes publicas atuais:
 
 - `data_directory`;
+- `job_database_path`;
 - `max_concurrent_tasks`;
 - `max_thread_workers`;
 - `max_process_workers`;
@@ -120,6 +122,15 @@ result = await engine.get_job_result(job.job_id)
 await engine.cancel_job(job.job_id)
 ```
 
+Jobs locais sao persistidos em SQLite. Por padrao, o arquivo fica em
+`<data_directory>/jobs/jobs.sqlite3`. Jobs concluidos e resultados pequenos
+continuam disponiveis ao criar outra instancia local com o mesmo
+`data_directory`.
+
+Na recuperacao, jobs que estavam em `created`, `queued` ou `running` viram
+`failed` com erro `job.interrupted`. Jobs em `cancel_requested` viram
+`cancelled`.
+
 ## Erros publicos
 
 | Erro | Quando ocorre | Retry |
@@ -133,6 +144,11 @@ await engine.cancel_job(job.job_id)
 | `SourceNotFileError` | Origem local nao e arquivo | Apos correcao |
 | `SourceNotReadableError` | Origem nao pode ser lida | Depende |
 | `JobNotFoundError` | Job inexistente | Nao |
+| `JobResultUnavailableError` | Resultado ainda indisponivel ou inexistente | Depende |
+| `InvalidJobTransitionError` | Transicao persistida de job invalida | Depende |
+| `JobConcurrencyError` | Conflito de versao ao persistir job | Sim |
+| `JobPersistenceError` | Falha no store local de jobs | Depende |
+| `JobRecoveryError` | Falha ao recuperar jobs locais | Depende |
 | `InvalidStateTransitionError` | Operacao em estado invalido | Depende |
 
 Exemplo:

@@ -61,7 +61,7 @@ Fica fora do Kernel v0:
 - transporte HTTP;
 - comandos de terminal;
 - modelos especificos de API;
-- persistencia duravel;
+- persistencia de producao;
 - object storage;
 - workers distribuidos;
 - parsers concretos;
@@ -199,19 +199,26 @@ Ele nao escolhe capabilities, nao faz parsing e nao contem regra documental.
 
 ## Jobs
 
-`InMemoryJobService` e a implementacao local inicial de jobs.
+`PersistentJobService` e a implementacao local oficial de jobs. Ele depende da
+porta `JobStore`; o adapter padrao em `DocumentEngine.local()` e
+`SQLiteJobStore`.
 
 Caracteristicas:
 
 - cria `JobResult`;
 - executa `ProcessingRequest` pelo runtime;
-- armazena status e resultado em memoria;
+- persiste status e resultado estruturado em SQLite local;
+- aplica transicoes por `JobTransitionPolicy`;
+- recupera jobs nao terminais na abertura do engine;
 - protege estado mutavel com lock async;
+- preserva jobs concluidos entre instancias simples do engine;
 - permite cancelamento idempotente quando ja cancelado;
-- rejeita cancelamento de job concluido;
-- perde dados ao reiniciar o processo.
+- rejeita cancelamento de job terminal.
 
-Persistencia duravel fica fora do Kernel v0.
+A documentacao detalhada esta em
+[persistent-local-jobs.md](persistent-local-jobs.md).
+
+Persistencia de producao, multi-host e distribuida continua fora do Kernel v0.
 
 ## Erros
 
@@ -293,6 +300,22 @@ Regras principais:
 - transicoes de estado sao explicitas e persistidas;
 - lifecycle documental e lifecycle de job permanecem separados.
 
+## Jobs Locais Persistentes
+
+A Fase 2.7 adiciona `JobRecord`, `JobStoredResult`, `JobStore`,
+`SQLiteJobStore`, `JobTransitionPolicy`, `LocalJobRecoveryService` e
+`PersistentJobService`.
+
+Regras principais:
+
+- `LocalRuntime` executa, mas nao persiste jobs;
+- `JobStore` e a porta da aplicacao;
+- `SQLiteJobStore` e somente o adapter local padrao;
+- `created`, `queued` e `running` interrompidos viram `failed` com
+  `job.interrupted`;
+- `cancel_requested` interrompido vira `cancelled`;
+- resultados estruturados pequenos sobrevivem a restart simples.
+
 ## Diagnostico Do Estado Atual
 
 Implementado:
@@ -310,9 +333,9 @@ Implementado:
 Incompleto por desenho:
 
 - modelo canonico rico;
-- artefatos reais;
+- artefatos reais fora do storage local inicial;
 - providers documentais concretos;
-- persistencia duravel de jobs;
+- persistencia de producao para jobs;
 - runtime distribuido;
 - paridade completa automatizada entre canais.
 
@@ -324,5 +347,5 @@ Proximas evolucoes naturais:
 - providers reais de inspecao e parsing;
 - contratos de artefatos mais ricos;
 - modelo canonico;
-- persistencia substituivel;
+- persistencia substituivel de producao;
 - runtime distribuido futuro.

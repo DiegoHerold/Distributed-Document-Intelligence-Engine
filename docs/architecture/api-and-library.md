@@ -97,6 +97,10 @@ Cada comando converte argumentos de terminal para contratos publicos, como
 Assim como API e SDK, a CLI nao grava artefatos diretamente: o storage local e
 acionado pelo engine.
 
+Jobs tambem passam exclusivamente pelo `DocumentEngine`. O modo local usa
+`PersistentJobService` e `SQLiteJobStore`; API e CLI nao acessam o banco de
+jobs diretamente.
+
 Saidas suportadas:
 
 - `console`;
@@ -119,5 +123,6 @@ Bloco 1 cria apenas a fundacao:
 - Capability Registry.
 
 Ainda nao existem capabilities reais de PDF, Excel, OCR, layout, tabelas ou IA
-semantica. Jobs e resultados locais ficam em memoria; na CLI, eles nao sao
-duraveis entre invocacoes do processo.
+semantica. Jobs e resultados locais sao persistidos em SQLite no
+`data_directory` do engine, mas essa ainda nao e a persistencia de producao do
+Eixo.

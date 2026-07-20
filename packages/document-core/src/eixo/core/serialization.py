@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import base64
 from dataclasses import fields, is_dataclass
 from datetime import UTC, datetime, timedelta
 from enum import Enum
@@ -26,6 +27,8 @@ def to_jsonable(value: Any) -> Any:
         return value.total_seconds()
     if isinstance(value, Path):
         return str(value)
+    if isinstance(value, bytes):
+        return base64.b64encode(value).decode("ascii")
     module = value.__class__.__module__
     if hasattr(value, "__str__") and module.startswith(("eixo.core.ids", "eixo.core.versions")):
         return str(value)

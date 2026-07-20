@@ -86,13 +86,13 @@ semanticamente relevante.
 
 ## Jobs Na CLI
 
-O runtime local da CLI nao oferece persistencia duravel entre processos do
-sistema operacional. Por isso, a paridade de `jobs status` e `jobs result`
-usa uma composicao compartilhada em processo de teste. Isso valida os comandos
-e o caminho real ate o `DocumentEngine`, mas nao transforma jobs locais em
-persistencia de producao.
+Desde a Fase 2.7, o engine local oferece persistencia simples de jobs em
+SQLite. A paridade de `jobs status` e `jobs result` continua usando composicao
+controlada em processo de teste para manter IDs, diretorios temporarios e
+capabilities deterministicas sob controle.
 
-Persistencia duravel de jobs continua fora do escopo do Bloco 1.
+Isso valida os comandos e o caminho real ate o `DocumentEngine`, sem transformar
+a persistencia local em persistencia distribuida de producao.
 
 ## Comandos
 

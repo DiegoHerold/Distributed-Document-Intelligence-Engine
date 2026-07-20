@@ -12,6 +12,14 @@ from eixo.application.ingestion import (
     SourceResolver,
     enrich_source_with_identity,
 )
+from eixo.application.jobs import (
+    JobStore,
+    JobTransitionPolicy,
+    LocalJobRecoveryService,
+    TERMINAL_STATUSES,
+    job_to_result,
+    new_job_record,
+)
 from eixo.core import (
     CapabilityNotFoundError,
     ErrorCategory,
@@ -25,7 +33,9 @@ from eixo.core import (
     JobId,
     JobNotFoundError,
     JobResult,
+    JobResultUnavailableError,
     JobStatus,
+    JobStoredResult,
     ParseRequest,
     ParseResult,
     ProcessingRequest,
@@ -305,6 +315,224 @@ class InMemoryJobService:
             raise JobNotFoundError(f"Job not found: {job_id}")
 
 
+@dataclass(slots=True)
+class PersistentJobService:
+    processing_service: CapabilityBackedDocumentService
+    runtime: ExecutionRuntime
+    store: JobStore
+    policy: JobTransitionPolicy = field(default_factory=JobTransitionPolicy.default)
+    _handles: dict[JobId, object] = field(default_factory=dict)
+    _lock: asyncio.Lock = field(default_factory=asyncio.Lock)
+    _recovered: bool = False
+
+    async def submit(self, request: ProcessingRequest) -> JobResult:
+        await self._ensure_recovered()
+        job_id = JobId.new()
+        created = new_job_record(job_id, request, operation="process")
+        await self.store.create(created)
+        queued = self.policy.transition(
+            created,
+            to_status=JobStatus.QUEUED,
+            progress=0.0,
+            stage="queued",
+        )
+        await self.store.update(queued, expected_version=created.version)
+
+        async def run_processing(
+            value: ProcessingRequest,
+            context,
+        ) -> ProcessingResult:
+            current = await self.store.get(job_id)
+            running = self.policy.transition(
+                current,
+                to_status=JobStatus.RUNNING,
+                progress=0.1,
+                stage="processing",
+            )
+            await self.store.update(running, expected_version=current.version)
+            return await self.processing_service.process(value)
+
+        task = ExecutionTask(
+            task_id=f"task_{job_id}",
+            name="process-document-job",
+            handler=run_processing,
+            input=request,
+            execution_mode=ExecutionMode.ASYNC,
+        )
+        handle = await self.runtime.submit(task, context=context_from_request(request))
+        async with self._lock:
+            self._handles[job_id] = handle
+        asyncio.create_task(self._watch_job(job_id, handle))
+        return job_to_result(queued)
+
+    async def get_status(self, job_id: JobId) -> JobResult:
+        await self._ensure_recovered()
+        record = await self.store.get(job_id)
+        async with self._lock:
+            handle = self._handles.get(job_id)
+        if handle is not None and handle.status == ExecutionStatus.RUNNING:
+            progress = handle.progress.percentage / 100 if handle.progress else record.progress
+            if progress > record.progress:
+                updated = replace(record, progress=progress, updated_at=isoformat_utc(utc_now()))
+                await self.store.update(updated, expected_version=record.version)
+                record = updated
+        return job_to_result(record)
+
+    async def get_result(self, job_id: JobId) -> ProcessingResult:
+        await self._ensure_recovered()
+        record = await self.store.get(job_id)
+        if record.status == JobStatus.FAILED:
+            raise JobResultUnavailableError("Job failed before producing a result")
+        if record.status == JobStatus.CANCELLED:
+            raise JobResultUnavailableError("Job was cancelled before producing a result")
+        if not record.result_available:
+            async with self._lock:
+                handle = self._handles.get(job_id)
+            if handle is not None and handle.status == ExecutionStatus.COMPLETED:
+                await self._store_completed_handle(job_id, handle)
+        return (await self.store.get_result(job_id)).result
+
+    async def cancel(self, job_id: JobId) -> JobResult:
+        await self._ensure_recovered()
+        current = await self.store.get(job_id)
+        if current.status == JobStatus.CANCELLED:
+            return job_to_result(current)
+        if current.status in {
+            JobStatus.COMPLETED,
+            JobStatus.REVIEW_REQUIRED,
+            JobStatus.FAILED,
+        }:
+            raise InvalidStateTransitionError("Terminal jobs cannot be cancelled")
+        async with self._lock:
+            handle = self._handles.get(job_id)
+        if current.status == JobStatus.CANCEL_REQUESTED:
+            if handle is None or handle.status == ExecutionStatus.CANCELLED:
+                cancelled = self.policy.transition(
+                    current,
+                    to_status=JobStatus.CANCELLED,
+                    progress=0.0,
+                    stage="cancelled",
+                )
+                await self.store.update(cancelled, expected_version=current.version)
+                return job_to_result(cancelled)
+            return job_to_result(current)
+        if current.status == JobStatus.CREATED:
+            cancelled = self.policy.transition(
+                current,
+                to_status=JobStatus.CANCELLED,
+                progress=0.0,
+                stage="cancelled",
+            )
+            await self.store.update(cancelled, expected_version=current.version)
+            return job_to_result(cancelled)
+        requested = self.policy.transition(
+            current,
+            to_status=JobStatus.CANCEL_REQUESTED,
+            stage="cancelling",
+        )
+        await self.store.update(requested, expected_version=current.version)
+        if handle is None:
+            cancelled = self.policy.transition(
+                requested,
+                to_status=JobStatus.CANCELLED,
+                progress=0.0,
+                stage="cancelled",
+            )
+            await self.store.update(cancelled, expected_version=requested.version)
+            return job_to_result(cancelled)
+        if handle is not None:
+            await handle.cancel()
+            if handle.status == ExecutionStatus.CANCELLED:
+                cancelled = self.policy.transition(
+                    requested,
+                    to_status=JobStatus.CANCELLED,
+                    progress=0.0,
+                    stage="cancelled",
+                )
+                await self.store.update(cancelled, expected_version=requested.version)
+                return job_to_result(cancelled)
+        return job_to_result(requested)
+
+    async def _watch_job(self, job_id: JobId, handle) -> None:
+        result: ExecutionResult[ProcessingResult] = await handle.wait()
+        await self._store_execution_result(job_id, result)
+
+    async def _store_completed_handle(self, job_id: JobId, handle) -> None:
+        result: ExecutionResult[ProcessingResult] = await handle.wait()
+        await self._store_execution_result(job_id, result)
+
+    async def _store_execution_result(
+        self,
+        job_id: JobId,
+        result: ExecutionResult[ProcessingResult],
+    ) -> None:
+        current = await self.store.get(job_id)
+        if current.status in TERMINAL_STATUSES:
+            return
+        if result.status == ExecutionStatus.COMPLETED and result.value is not None:
+            await self.store.save_result(
+                JobStoredResult(
+                    job_id=job_id,
+                    result=result.value,
+                    stored_at=isoformat_utc(utc_now()),
+                )
+            )
+            to_status = (
+                JobStatus.REVIEW_REQUIRED
+                if result.value.status == ProcessingStatus.REVIEW_REQUIRED
+                else JobStatus.COMPLETED
+            )
+            completed = self.policy.transition(
+                current,
+                to_status=to_status,
+                progress=1.0,
+                stage="completed",
+                result_available=True,
+            )
+            await self.store.update(completed, expected_version=current.version)
+            return
+        if result.status == ExecutionStatus.CANCELLED:
+            if current.status not in {JobStatus.CREATED, JobStatus.CANCEL_REQUESTED}:
+                requested = self.policy.transition(
+                    current,
+                    to_status=JobStatus.CANCEL_REQUESTED,
+                    stage="cancelling",
+                )
+                await self.store.update(requested, expected_version=current.version)
+                current = requested
+            cancelled = self.policy.transition(
+                current,
+                to_status=JobStatus.CANCELLED,
+                progress=0.0,
+                stage="cancelled",
+            )
+            await self.store.update(cancelled, expected_version=current.version)
+            return
+        error = result.error
+        failed = self.policy.transition(
+            current,
+            to_status=JobStatus.FAILED,
+            stage="failed",
+            error=ErrorResult(
+                code=error.code if error else "execution.error",
+                message=error.message if error else "Job failed",
+                category=error.category if error else ErrorCategory.EXECUTION,
+                retryable=error.retryable if error else False,
+                details=error.details if error else {},
+            ),
+        )
+        await self.store.update(failed, expected_version=current.version)
+
+    async def _ensure_recovered(self) -> None:
+        if self._recovered:
+            return
+        async with self._lock:
+            if self._recovered:
+                return
+            await LocalJobRecoveryService(self.store, self.policy).recover()
+            self._recovered = True
+
+
 def document_format_from_request(
     request: InspectionRequest | ParseRequest | ProcessingRequest,
 ) -> str | None:
@@ -351,6 +579,7 @@ def request_with_ingestion_result(
 __all__ = [
     "CapabilityBackedDocumentService",
     "InMemoryJobService",
+    "PersistentJobService",
     "context_from_request",
     "document_format_from_detection",
     "request_with_identified_source",

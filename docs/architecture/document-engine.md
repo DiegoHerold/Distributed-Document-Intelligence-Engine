@@ -43,7 +43,7 @@ from eixo import DocumentEngine
 engine = DocumentEngine.local()
 ```
 
-`DocumentEngine.local()` creates one `LocalRuntime`, one `CapabilityRegistry`, application use cases and an in-memory job service.
+`DocumentEngine.local()` creates one `LocalRuntime`, one `CapabilityRegistry`, application use cases and a persistent local job service backed by SQLite.
 
 Custom dependencies can be injected:
 
@@ -51,6 +51,8 @@ Custom dependencies can be injected:
 engine = DocumentEngine.local(
     registry=registry,
     runtime=runtime,
+    data_directory=".eixo/local",
+    job_database_path=".eixo/local/jobs/jobs.sqlite3",
 )
 ```
 
@@ -95,9 +97,19 @@ After shutdown, operations are rejected with a domain state error.
 - `get_job_result(job_id)`;
 - `cancel_job(job_id)`.
 
-The current job service is in-memory and local-only.
+The current job service is local-only and persistent. By default, jobs are
+stored under `<data_directory>/jobs/jobs.sqlite3`. The service keeps the public
+flow stable while preserving completed job status and results across a simple
+restart of the local engine.
+
+Interrupted non-terminal jobs are recovered explicitly:
+
+- `created`, `queued` and `running` become `failed` with `job.interrupted`;
+- `cancel_requested` becomes `cancelled`.
+
+Production persistence, distributed workers and event streams remain outside
+the current local engine.
 
 ## Current limitation
 
 No real PDF, Excel, OCR, rendering, layout, template or semantic capability exists yet. Without registered capabilities, public methods preserve and propagate `CapabilityNotFoundError`.
-

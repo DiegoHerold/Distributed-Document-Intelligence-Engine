@@ -93,6 +93,9 @@ Resposta:
 
 A resposta usa `202 Accepted` e inclui `Location: /v1/extractions/{job_id}`.
 
+No modo local, jobs e resultados estruturados pequenos sao persistidos em
+SQLite no `data_directory` do engine usado pela API.
+
 ## Consultar status
 
 ```bash
@@ -131,9 +134,7 @@ A API devolve o mesmo header quando valido ou gera um novo quando ausente.
 
 ## Limitacoes atuais
 
-- jobs ficam em memoria;
-- resultados ficam em memoria;
-- dados sao perdidos ao reiniciar;
+- persistencia de jobs e local, baseada em SQLite;
 - nao ha autenticacao;
 - nao ha persistencia de producao;
 - nao ha parser real de PDF, Excel, OCR, layout, tabelas ou IA semantica.

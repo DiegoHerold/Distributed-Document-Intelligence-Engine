@@ -146,6 +146,43 @@ class JobNotFoundError(EixoError):
     category = ErrorCategory.NOT_FOUND
 
 
+class JobAlreadyExistsError(EixoError):
+    code = "job.already_exists"
+    category = ErrorCategory.STATE
+
+
+class InvalidJobTransitionError(EixoError):
+    code = "job.invalid_transition"
+    category = ErrorCategory.STATE
+
+
+class JobConcurrencyError(EixoError):
+    code = "job.concurrency_conflict"
+    category = ErrorCategory.STATE
+
+
+class JobPersistenceError(EixoError):
+    code = "job.persistence_error"
+    category = ErrorCategory.EXECUTION
+    retryable = True
+
+
+class JobSerializationError(EixoError):
+    code = "job.serialization_error"
+    category = ErrorCategory.EXECUTION
+
+
+class JobResultUnavailableError(EixoError):
+    code = "job.result_unavailable"
+    category = ErrorCategory.STATE
+
+
+class JobRecoveryError(EixoError):
+    code = "job.recovery_error"
+    category = ErrorCategory.EXECUTION
+    retryable = True
+
+
 class InvalidStateTransitionError(EixoError):
     code = "state.invalid_transition"
     category = ErrorCategory.STATE

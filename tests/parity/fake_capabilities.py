@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import asyncio
+import tempfile
 from dataclasses import dataclass
+from pathlib import Path
 
 from eixo import DocumentEngine
 from eixo.core import (
@@ -51,6 +53,7 @@ def parity_engine(*, timeout: float = 30.0) -> DocumentEngine:
             ParityParseCapability(),
             ParityProcessingCapability(),
         ),
+        data_directory=Path(tempfile.mkdtemp(prefix="eixo-parity-")),
         default_timeout=timeout,
     )
 

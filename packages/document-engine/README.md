@@ -4,7 +4,7 @@ Public facade and local composition root for Eixo.
 
 `DocumentEngine` coordinates application use cases. It does not parse documents,
 run OCR, implement routing, or execute capabilities directly. Local persistence
-is limited to original artifacts and document lifecycle records.
+covers original artifacts, document lifecycle records and local job records.
 
 ## Public API
 
@@ -30,7 +30,10 @@ is limited to original artifacts and document lifecycle records.
 - capability-backed application services;
 - `LocalArtifactStore`;
 - `LocalDocumentRepository`;
-- an in-memory job service.
+- `PersistentJobService` backed by `SQLiteJobStore`.
+
+By default, local jobs use `<data_directory>/jobs/jobs.sqlite3`. The path can
+be overridden with `job_database_path`.
 
 Dependencies: `eixo-document-core`, `eixo-document-application`, `eixo-plugins`, `eixo-runtime-local`.
 
