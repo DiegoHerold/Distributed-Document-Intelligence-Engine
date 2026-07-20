@@ -1,0 +1,15 @@
+[project]
+name = "eixo-artifacts"
+version = "0.1.0"
+description = "Artifact references and future storage ports for Eixo."
+requires-python = ">=3.12"
+dependencies = ["eixo-document-core", "eixo-document-model"]
+
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["eixo.artifacts*"]
+

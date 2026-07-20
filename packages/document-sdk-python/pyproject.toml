@@ -1,0 +1,31 @@
+[project]
+name = "eixo-document-sdk-python"
+dynamic = ["version"]
+description = "Python SDK facade for Eixo."
+requires-python = ">=3.12"
+readme = "README.md"
+dependencies = ["eixo-document-core", "eixo-document-engine"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.12",
+    "Typing :: Typed",
+]
+
+[project.optional-dependencies]
+local = ["eixo-runtime-local"]
+
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["eixo", "eixo.sdk*"]
+
+[tool.setuptools.package-data]
+eixo = ["py.typed"]
+
+[tool.setuptools.dynamic]
+version = {attr = "eixo.version.__version__"}

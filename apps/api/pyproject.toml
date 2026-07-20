@@ -1,0 +1,22 @@
+[project]
+name = "eixo-api"
+version = "0.1.0"
+description = "Minimal API foundation for Eixo."
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi>=0.139",
+    "pydantic>=2.13",
+    "python-multipart>=0.0.20",
+    "uvicorn>=0.38",
+    "eixo-document-core",
+    "eixo-document-application",
+    "eixo-document-engine",
+]
+
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["eixo_api*"]

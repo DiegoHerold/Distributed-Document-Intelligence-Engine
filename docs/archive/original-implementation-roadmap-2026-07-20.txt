@@ -1,0 +1,2926 @@
+# Roadmap de implementação do Eixo
+
+## Regra obrigatória para todas as fases
+
+Toda funcionalidade pública criada em qualquer fase deve seguir o fluxo:
+
+```text
+Contrato
+   ↓
+Implementação no núcleo
+   ↓
+Caso de uso na camada de aplicação
+   ↓
+Biblioteca Python
+   ↓
+API REST
+   ↓
+CLI, quando útil
+   ↓
+Testes de paridade
+   ↓
+Documentação
+```
+
+Uma funcionalidade não está concluída apenas porque funciona internamente.
+
+Ela deve estar reutilizável por:
+
+```text
+DocumentEngine.local()
+DocumentEngine.remote()
+API REST
+CLI, quando aplicável
+```
+
+A API, a biblioteca, os workers e a CLI nunca devem reimplementar a lógica da funcionalidade.
+
+---
+
+# BLOCO 0 — Organização e governança do projeto
+
+Objetivo do bloco:
+
+> Criar uma base documental e organizacional para que todas as próximas fases sejam executadas com contexto correto.
+
+## Fase 0.1 — Organizar os arquivos de contexto
+
+Analisar os arquivos existentes do Eixo, criar a estrutura de documentação e realocar corretamente:
+
+```text
+docs/
+├── context/
+├── architecture/
+├── decisions/
+├── specifications/
+├── roadmap/
+├── guides/
+├── research/
+└── archive/
+```
+
+Entregas:
+
+* arquivos movidos e renomeados;
+* duplicidades identificadas;
+* documentos antigos arquivados;
+* links corrigidos;
+* `docs/README.md`.
+
+---
+
+## Fase 0.2 — Consolidar o contexto mestre
+
+Consolidar o documento oficial em:
+
+```text
+docs/context/master-context.md
+```
+
+Ele deve explicar:
+
+* visão;
+* objetivos;
+* arquitetura;
+* processamento adaptativo;
+* biblioteca e API;
+* modelo canônico;
+* capabilities;
+* runtimes;
+* fases;
+* decisões já estabelecidas.
+
+---
+
+## Fase 0.3 — Criar o AGENTS.md
+
+Criar instruções oficiais para agentes de código.
+
+Deve definir:
+
+* documentos obrigatórios;
+* ordem de leitura;
+* regras arquiteturais;
+* padrão dos prompts;
+* modo de execução;
+* testes obrigatórios;
+* proibição de duplicação entre API e biblioteca;
+* critérios de resposta final.
+
+---
+
+## Fase 0.4 — Registrar as primeiras ADRs
+
+Criar os registros das decisões já estabelecidas:
+
+```text
+ADR-0001 — Arquitetura modular
+ADR-0002 — API e biblioteca desde o início
+ADR-0003 — Modelo documental canônico
+ADR-0004 — Processamento adaptativo
+ADR-0005 — Evidências obrigatórias
+ADR-0006 — LocalRuntime e TemporalRuntime
+ADR-0007 — Módulos antes de microsserviços
+```
+
+---
+
+## Fase 0.5 — Criar o índice oficial de fases
+
+Criar:
+
+```text
+docs/roadmap/README.md
+docs/roadmap/phases/README.md
+```
+
+O índice deve informar:
+
+* blocos;
+* fases;
+* dependências;
+* estado;
+* entregas;
+* marcos;
+* ordem recomendada de execução.
+
+---
+
+# BLOCO 1 — Fundação técnica reutilizável
+
+Objetivo do bloco:
+
+> Criar o núcleo inicial, a biblioteca, a API e a CLI antes das capacidades documentais.
+
+## Fase 1.1 — Criar a estrutura inicial do monorepo
+
+Criar a estrutura real:
+
+```text
+apps/
+├── api/
+└── cli/
+
+packages/
+├── document-core/
+├── document-model/
+├── document-application/
+├── document-engine/
+├── document-sdk-python/
+├── artifacts/
+├── plugins/
+└── runtime-local/
+
+adapters/
+tests/
+contracts/
+examples/
+docs/
+```
+
+Incluir:
+
+* gerenciamento de dependências;
+* lint;
+* formatação;
+* type checking;
+* testes;
+* configuração comum.
+
+---
+
+## Fase 1.2 — Criar tipos fundamentais
+
+Implementar em `document-core`:
+
+* identificadores tipados;
+* timestamps;
+* versões;
+* enums;
+* status;
+* erros;
+* warnings;
+* resultados genéricos;
+* paginação;
+* metadados de execução.
+
+Exemplos:
+
+```text
+DocumentId
+JobId
+ArtifactId
+PlanId
+ElementId
+TemplateId
+SchemaId
+```
+
+---
+
+## Fase 1.3 — Criar os contratos de processamento
+
+Criar os primeiros modelos públicos:
+
+```text
+DocumentSource
+ProcessingRequest
+ProcessingResult
+InspectionRequest
+InspectionResult
+ParseRequest
+ParseResult
+JobResult
+ErrorResult
+```
+
+Os mesmos contratos devem alimentar:
+
+* núcleo;
+* SDK;
+* API;
+* testes;
+* OpenAPI.
+
+---
+
+## Fase 1.4 — Criar a camada de aplicação
+
+Implementar os primeiros casos de uso:
+
+```text
+InspectDocument
+ParseDocument
+ProcessDocument
+SubmitProcessingJob
+GetJobStatus
+GetJobResult
+CancelJob
+```
+
+A camada de aplicação não deve conhecer FastAPI nem detalhes de transporte.
+
+---
+
+## Fase 1.5 — Criar o Capability Registry
+
+Implementar o registro de capabilities e providers.
+
+Deve permitir:
+
+* registrar;
+* localizar;
+* validar compatibilidade;
+* listar versões;
+* declarar inputs;
+* declarar outputs;
+* declarar formatos suportados;
+* detectar capability ausente.
+
+---
+
+## Fase 1.6 — Criar o LocalRuntime
+
+Implementar a primeira forma de execução:
+
+```text
+LocalRuntime
+```
+
+Responsabilidades:
+
+* executar tarefas assíncronas;
+* controlar timeout;
+* cancelar;
+* reportar progresso;
+* executar threads ou processos;
+* retornar resultados;
+* preservar contexto.
+
+---
+
+## Fase 1.7 — Criar o DocumentEngine
+
+Criar a fachada principal:
+
+```python
+engine = DocumentEngine.local()
+```
+
+Métodos iniciais:
+
+```python
+await engine.inspect(...)
+await engine.parse(...)
+await engine.process(...)
+await engine.submit(...)
+```
+
+O engine deve coordenar os casos de uso, não executar diretamente implementações específicas.
+
+---
+
+## Fase 1.8 — Criar a biblioteca Python pública
+
+Criar o pacote instalável com:
+
+* imports públicos;
+* modelos tipados;
+* configuração;
+* tratamento de erros;
+* modo local;
+* documentação inicial;
+* exemplos.
+
+Exemplo:
+
+```python
+from eixo import DocumentEngine, ProcessingRequest
+```
+
+---
+
+## Fase 1.9 — Criar a API REST inicial
+
+Criar a aplicação HTTP utilizando a camada de aplicação.
+
+Endpoints iniciais:
+
+```http
+GET  /health
+GET  /ready
+POST /v1/documents:inspect
+POST /v1/documents:parse
+POST /v1/extractions
+GET  /v1/extractions/{job_id}
+GET  /v1/extractions/{job_id}/result
+POST /v1/extractions/{job_id}/cancel
+```
+
+Inicialmente pode utilizar armazenamento e jobs em memória.
+
+---
+
+## Fase 1.10 — Criar a CLI inicial
+
+Comandos:
+
+```bash
+eixo inspect
+eixo parse
+eixo process
+eixo jobs status
+eixo jobs result
+```
+
+A CLI deve usar os mesmos casos de uso.
+
+---
+
+## Fase 1.11 — Criar testes de paridade
+
+Criar infraestrutura para verificar:
+
+```text
+Resultado da biblioteca
+≈
+Resultado da API
+≈
+Resultado da CLI
+```
+
+Ignorar somente campos de transporte, como URL ou momento da requisição.
+
+---
+
+# BLOCO 2 — Ingestão e ciclo de vida do documento
+
+Objetivo do bloco:
+
+> Receber documentos com segurança e preparar uma base uniforme para todas as capabilities.
+
+## Fase 2.1 — Criar a abstração DocumentSource
+
+Suportar fontes como:
+
+```text
+arquivo local
+bytes
+stream
+upload HTTP
+referência de artefato
+URL autorizada futuramente
+```
+
+Nenhum parser deve depender diretamente de um caminho local.
+
+---
+
+## Fase 2.2 — Criar o Source Resolver
+
+Resolver uma `DocumentSource` para uma representação interna legível.
+
+Responsabilidades:
+
+* abrir streams;
+* copiar para arquivo temporário quando necessário;
+* controlar ciclo de vida;
+* limpar temporários;
+* preservar nome e MIME declarados.
+
+---
+
+## Fase 2.3 — Detectar formato e MIME real
+
+Implementar:
+
+* detecção por assinatura;
+* comparação com extensão;
+* comparação com MIME informado;
+* identificação de PDF;
+* identificação de XLSX;
+* identificação de CSV;
+* identificação de imagem;
+* erro para formato não suportado.
+
+---
+
+## Fase 2.4 — Criar hashing e identidade do conteúdo
+
+Calcular:
+
+* SHA-256 do documento;
+* tamanho;
+* identificador;
+* duplicidade básica;
+* metadados de conteúdo.
+
+O hash deve ser reutilizado futuramente no cache.
+
+---
+
+## Fase 2.5 — Criar o Local Artifact Store
+
+Armazenar localmente:
+
+```text
+documentos originais
+artefatos intermediários
+resultados
+metadados
+```
+
+Organização sugerida:
+
+```text
+.data/
+├── documents/
+├── artifacts/
+├── jobs/
+└── results/
+```
+
+---
+
+## Fase 2.6 — Criar o ciclo de vida do documento
+
+Estados iniciais:
+
+```text
+received
+validated
+stored
+processing
+completed
+review_required
+failed
+cancelled
+```
+
+Registrar transições e erros.
+
+---
+
+## Fase 2.7 — Criar jobs locais persistentes
+
+Substituir o job exclusivamente em memória por um job store local simples.
+
+Pode utilizar SQLite ou arquivos estruturados.
+
+Deve suportar:
+
+* criação;
+* consulta;
+* atualização;
+* cancelamento;
+* recuperação após reinicialização simples.
+
+---
+
+## Fase 2.8 — Aplicar limites e validações de segurança
+
+Implementar:
+
+* limite de tamanho;
+* limite de páginas quando conhecido;
+* MIME inválido;
+* arquivo vazio;
+* arquivo corrompido;
+* nomes perigosos;
+* path traversal;
+* ZIP bomb em arquivos compactados;
+* timeout de leitura.
+
+---
+
+# BLOCO 3 — Extração nativa de PDF
+
+Objetivo do bloco:
+
+> Criar uma extração de PDF digital fiel, preservando texto, posição, estilo, imagens e estrutura interna.
+
+## Fase 3.1 — Criar o PDF Inspector básico
+
+Extrair:
+
+* validade;
+* senha;
+* número de páginas;
+* versão;
+* metadados;
+* tamanho das páginas;
+* orientação;
+* rotação;
+* presença de texto;
+* presença de imagens.
+
+Expor por biblioteca e API.
+
+---
+
+## Fase 3.2 — Extrair geometria das páginas
+
+Criar modelos para:
+
+* largura;
+* altura;
+* rotação;
+* crop box;
+* media box;
+* coordenadas absolutas;
+* coordenadas normalizadas.
+
+Padronizar o sistema de coordenadas.
+
+---
+
+## Fase 3.3 — Extrair caracteres, palavras e spans
+
+Preservar:
+
+* texto;
+* página;
+* bounding box;
+* ordem de origem;
+* fonte;
+* tamanho;
+* estilo;
+* cor quando disponível;
+* confiança nativa quando aplicável.
+
+---
+
+## Fase 3.4 — Extrair linhas e blocos nativos
+
+Obter estruturas fornecidas pelo parser de PDF sem ainda aplicar análise estrutural avançada.
+
+Manter vínculo entre:
+
+```text
+caractere
+palavra
+span
+linha
+bloco
+```
+
+---
+
+## Fase 3.5 — Extrair fontes e estilos
+
+Preservar:
+
+* nome da fonte;
+* tamanho;
+* negrito;
+* itálico;
+* monoespaçada;
+* cor;
+* superscript;
+* rotação do texto;
+* escrita vertical quando disponível.
+
+---
+
+## Fase 3.6 — Extrair imagens incorporadas
+
+Registrar:
+
+* imagem;
+* página;
+* posição;
+* dimensões;
+* resolução;
+* formato;
+* hash;
+* referência ao artefato original.
+
+---
+
+## Fase 3.7 — Extrair vetores e linhas desenhadas
+
+Detectar:
+
+* linhas;
+* retângulos;
+* bordas;
+* preenchimentos;
+* formas;
+* possíveis divisões de tabelas;
+* separadores visuais.
+
+---
+
+## Fase 3.8 — Criar o Native PDF Artifact
+
+Consolidar os dados em um artefato versionado:
+
+```text
+NativePDFParseArtifact
+```
+
+Deve conter:
+
+* documento;
+* páginas;
+* elementos;
+* imagens;
+* vetores;
+* metadados;
+* proveniência.
+
+---
+
+## Fase 3.9 — Criar endpoints e métodos especializados de PDF
+
+Biblioteca:
+
+```python
+await engine.inspect_pdf(...)
+await engine.parse_pdf(...)
+```
+
+API:
+
+```http
+POST /v1/pdf:inspect
+POST /v1/pdf:parse
+```
+
+Os endpoints genéricos também devem continuar funcionando.
+
+---
+
+## Fase 3.10 — Criar golden tests de PDF
+
+Criar corpus para:
+
+* PDF digital;
+* múltiplas fontes;
+* várias colunas;
+* tabelas;
+* imagens;
+* páginas rotacionadas;
+* texto fragmentado;
+* PDF protegido;
+* PDF corrompido.
+
+---
+
+# BLOCO 4 — Extração nativa de Excel
+
+Objetivo do bloco:
+
+> Extrair planilhas nativamente, preservando workbook, abas, células, fórmulas, estilos e estrutura.
+
+## Fase 4.1 — Criar o Excel Inspector
+
+Extrair:
+
+* validade;
+* formato;
+* tamanho;
+* número de abas;
+* nomes;
+* visibilidade;
+* presença de fórmulas;
+* células mescladas;
+* nomes definidos;
+* tabelas estruturadas.
+
+---
+
+## Fase 4.2 — Extrair workbook e sheets
+
+Criar representação de:
+
+```text
+Workbook
+Sheet
+```
+
+Preservar:
+
+* ordem;
+* nome;
+* estado;
+* dimensões;
+* área utilizada;
+* propriedades.
+
+---
+
+## Fase 4.3 — Extrair células e valores
+
+Para cada célula:
+
+* endereço;
+* linha;
+* coluna;
+* valor bruto;
+* valor exibido;
+* tipo;
+* fórmula;
+* resultado da fórmula;
+* erro;
+* vazio real.
+
+---
+
+## Fase 4.4 — Extrair estilos e formatos
+
+Preservar:
+
+* formato numérico;
+* fonte;
+* preenchimento;
+* bordas;
+* alinhamento;
+* proteção;
+* estilo compartilhado;
+* data e moeda.
+
+---
+
+## Fase 4.5 — Processar células mescladas
+
+Representar:
+
+* intervalo mesclado;
+* célula principal;
+* células participantes;
+* valor efetivo;
+* impacto estrutural.
+
+---
+
+## Fase 4.6 — Extrair linhas, colunas e visibilidade
+
+Preservar:
+
+* altura;
+* largura;
+* linhas ocultas;
+* colunas ocultas;
+* grupos;
+* outline;
+* quebras;
+* congelamento de painéis.
+
+---
+
+## Fase 4.7 — Extrair recursos adicionais
+
+Suportar:
+
+* filtros;
+* tabelas estruturadas;
+* nomes definidos;
+* comentários;
+* hyperlinks;
+* validações;
+* áreas de impressão.
+
+---
+
+## Fase 4.8 — Criar o Native Excel Artifact
+
+Criar:
+
+```text
+NativeExcelParseArtifact
+```
+
+Com:
+
+* workbook;
+* sheets;
+* células;
+* estilos;
+* recursos;
+* proveniência;
+* referências.
+
+---
+
+## Fase 4.9 — Criar endpoints e métodos especializados de Excel
+
+Biblioteca:
+
+```python
+await engine.inspect_excel(...)
+await engine.parse_excel(...)
+```
+
+API:
+
+```http
+POST /v1/excel:inspect
+POST /v1/excel:parse
+```
+
+---
+
+## Fase 4.10 — Criar golden tests de Excel
+
+Corpus:
+
+* aba única;
+* múltiplas abas;
+* fórmulas;
+* células mescladas;
+* tabelas;
+* linhas ocultas;
+* múltiplos blocos;
+* balancetes;
+* planilhas grandes.
+
+---
+
+# BLOCO 5 — Modelo documental canônico e evidências
+
+Objetivo do bloco:
+
+> Unificar PDF e Excel sem eliminar as características particulares de cada formato.
+
+## Fase 5.1 — Criar o modelo Surface
+
+Tipos iniciais:
+
+```text
+PageSurface
+SheetSurface
+```
+
+Todo elemento deve pertencer a uma superfície.
+
+---
+
+## Fase 5.2 — Criar o modelo DocumentElement
+
+Tipos iniciais:
+
+```text
+TextElement
+ImageElement
+VectorElement
+CellElement
+RegionElement
+```
+
+Elementos devem suportar atributos comuns e extensões específicas.
+
+---
+
+## Fase 5.3 — Criar o modelo de geometria comum
+
+Suportar:
+
+* bounding box;
+* polygon;
+* linha e coluna;
+* endereço de célula;
+* coordenadas absolutas;
+* coordenadas normalizadas;
+* sobreposição;
+* distância.
+
+---
+
+## Fase 5.4 — Criar o modelo de relações
+
+Relações iniciais:
+
+```text
+contains
+contained_by
+next
+previous
+aligned_with
+label_of
+value_of
+parent_of
+child_of
+row_of
+column_of
+derived_from
+```
+
+---
+
+## Fase 5.5 — Criar o modelo Evidence
+
+Uma evidência deve apontar para:
+
+* documento;
+* superfície;
+* elemento;
+* região;
+* célula;
+* método;
+* artefato;
+* provider;
+* versão.
+
+---
+
+## Fase 5.6 — Criar o modelo Provenance
+
+Registrar:
+
+* capability;
+* provider;
+* versão;
+* configuração;
+* inputs;
+* outputs;
+* job;
+* atividade;
+* data;
+* transformações.
+
+---
+
+## Fase 5.7 — Criar o Canonical Document Builder para PDF
+
+Converter o artefato nativo de PDF para:
+
+```text
+CanonicalDocument
+```
+
+Sem perder referências ao artefato original.
+
+---
+
+## Fase 5.8 — Criar o Canonical Document Builder para Excel
+
+Converter workbook, sheets e células para o mesmo modelo documental.
+
+---
+
+## Fase 5.9 — Criar serialização e versionamento
+
+Definir:
+
+* JSON Schema;
+* versão do modelo;
+* compatibilidade;
+* leitura de versões anteriores;
+* extensão futura;
+* validação dos documentos serializados.
+
+---
+
+## Fase 5.10 — Expor o documento canônico
+
+Biblioteca:
+
+```python
+await engine.canonicalize(...)
+```
+
+API:
+
+```http
+POST /v1/documents:canonicalize
+GET  /v1/documents/{document_id}/canonical
+```
+
+---
+
+# BLOCO 6 — Reconstrução estrutural
+
+Objetivo do bloco:
+
+> Transformar elementos brutos em estruturas úteis como linhas, seções, tabelas, listas e hierarquias.
+
+## Fase 6.1 — Construir linhas de texto
+
+Agrupar palavras e spans utilizando:
+
+* alinhamento;
+* distância;
+* baseline;
+* fonte;
+* direção;
+* rotação.
+
+---
+
+## Fase 6.2 — Construir blocos e parágrafos
+
+Agrupar linhas considerando:
+
+* espaçamento;
+* alinhamento;
+* estilo;
+* recuo;
+* coluna;
+* continuidade textual.
+
+---
+
+## Fase 6.3 — Detectar títulos e subtítulos
+
+Utilizar:
+
+* tamanho de fonte;
+* peso;
+* posição;
+* espaçamento;
+* capitalização;
+* padrões;
+* repetição.
+
+---
+
+## Fase 6.4 — Detectar seções
+
+Criar estruturas delimitadas por:
+
+* títulos;
+* subtítulos;
+* separadores;
+* espaços;
+* mudanças de layout;
+* intervalos em planilhas.
+
+---
+
+## Fase 6.5 — Detectar cabeçalhos e rodapés
+
+Identificar elementos:
+
+* repetidos;
+* próximos às margens;
+* numeradores de página;
+* metadados;
+* títulos de relatório.
+
+---
+
+## Fase 6.6 — Detectar pares rótulo-valor
+
+Relações iniciais:
+
+```text
+valor à direita
+valor abaixo
+valor na mesma linha
+valor na mesma região
+valor em célula adjacente
+```
+
+---
+
+## Fase 6.7 — Detectar listas
+
+Suportar:
+
+* listas com marcadores;
+* listas numeradas;
+* listas sem marcadores explícitos;
+* itens multi-linha;
+* listas em células.
+
+---
+
+## Fase 6.8 — Detectar hierarquias
+
+Utilizar:
+
+* indentação;
+* códigos;
+* fonte;
+* posição;
+* prefixos;
+* agrupamentos;
+* outline de Excel.
+
+---
+
+## Fase 6.9 — Detectar tabelas nativas em PDF
+
+Utilizar:
+
+* linhas vetoriais;
+* alinhamentos;
+* repetição de posições;
+* espaçamento;
+* tipos de dados;
+* cabeçalhos.
+
+---
+
+## Fase 6.10 — Detectar regiões e tabelas em Excel
+
+Identificar:
+
+* blocos de células;
+* tabelas formais;
+* tabelas implícitas;
+* cabeçalhos;
+* totais;
+* múltiplas tabelas na mesma aba.
+
+---
+
+## Fase 6.11 — Reconstruir tabelas entre páginas
+
+Detectar:
+
+* continuação;
+* cabeçalhos repetidos;
+* colunas compatíveis;
+* quebra de página;
+* linhas interrompidas.
+
+---
+
+## Fase 6.12 — Expor análise estrutural
+
+Biblioteca:
+
+```python
+await engine.analyze_structure(...)
+```
+
+API:
+
+```http
+POST /v1/documents:analyze-structure
+```
+
+---
+
+# BLOCO 7 — Schemas, templates e extração
+
+Objetivo do bloco:
+
+> Converter estruturas documentais em dados de negócio reutilizáveis.
+
+## Fase 7.1 — Definir o Extraction Schema
+
+Suportar:
+
+* campos;
+* objetos;
+* listas;
+* tabelas;
+* tipos;
+* campos obrigatórios;
+* valores padrão;
+* referências;
+* estruturas aninhadas.
+
+---
+
+## Fase 7.2 — Criar o Schema Registry local
+
+Permitir:
+
+* registrar;
+* versionar;
+* consultar;
+* validar;
+* desativar;
+* carregar schemas.
+
+---
+
+## Fase 7.3 — Criar o modelo de candidatos
+
+Antes de produzir o valor final, gerar:
+
+```text
+FieldCandidate
+```
+
+Cada candidato deve possuir:
+
+* valor;
+* evidência;
+* método;
+* score;
+* normalização;
+* warnings.
+
+---
+
+## Fase 7.4 — Criar seletores textuais
+
+Suportar:
+
+* texto exato;
+* texto normalizado;
+* regex;
+* prefixo;
+* sufixo;
+* contém;
+* similaridade básica.
+
+---
+
+## Fase 7.5 — Criar seletores espaciais
+
+Suportar:
+
+```text
+right_of
+left_of
+above
+below
+inside
+nearest
+same_line
+same_region
+```
+
+---
+
+## Fase 7.6 — Criar seletores para Excel
+
+Suportar:
+
+* célula;
+* intervalo;
+* coluna por cabeçalho;
+* linha por rótulo;
+* tabela por região;
+* nome definido;
+* aba por nome ou padrão.
+
+---
+
+## Fase 7.7 — Extrair campos simples
+
+Implementar:
+
+* texto;
+* número;
+* data;
+* identificador;
+* boolean;
+* enumeração.
+
+---
+
+## Fase 7.8 — Extrair objetos
+
+Agrupar campos relacionados em:
+
+```text
+company
+period
+address
+customer
+document_metadata
+```
+
+---
+
+## Fase 7.9 — Extrair listas
+
+Criar listas de objetos ou valores preservando:
+
+* ordem;
+* evidência;
+* índice;
+* origem;
+* confiança individual.
+
+---
+
+## Fase 7.10 — Extrair tabelas
+
+Mapear:
+
+* cabeçalhos;
+* colunas;
+* tipos;
+* linhas;
+* células;
+* valores ausentes;
+* evidências.
+
+---
+
+## Fase 7.11 — Criar o modelo de Template
+
+Template deve conter:
+
+* identificação;
+* versão;
+* sinais;
+* schema;
+* seletores;
+* extrações;
+* normalizadores;
+* validadores;
+* políticas;
+* confiança mínima.
+
+---
+
+## Fase 7.12 — Criar o Template Registry local
+
+Permitir:
+
+* criação;
+* atualização;
+* versionamento;
+* ativação;
+* desativação;
+* consulta;
+* listagem.
+
+---
+
+## Fase 7.13 — Criar matching inicial de template
+
+Comparar:
+
+* textos;
+* metadados;
+* estrutura;
+* abas;
+* cabeçalhos;
+* número de colunas;
+* sinais declarados.
+
+---
+
+## Fase 7.14 — Criar o Extraction Engine
+
+Coordenar:
+
+```text
+schema
+template
+documento canônico
+candidatos
+resultado
+evidências
+```
+
+---
+
+## Fase 7.15 — Expor schemas, templates e extrações
+
+Biblioteca e API devem suportar:
+
+* registrar schema;
+* registrar template;
+* listar;
+* consultar;
+* executar extração;
+* obter resultado.
+
+---
+
+# BLOCO 8 — Normalização, validação e confiança
+
+Objetivo do bloco:
+
+> Produzir valores tipados, validados e acompanhados de uma confiança explicável.
+
+## Fase 8.1 — Criar o Normalizer Registry
+
+Permitir normalizadores:
+
+* internos;
+* customizados;
+* compostos;
+* versionados;
+* configuráveis.
+
+---
+
+## Fase 8.2 — Criar normalizadores básicos
+
+Implementar:
+
+* texto;
+* espaços;
+* caixa;
+* inteiro;
+* decimal;
+* moeda;
+* percentual;
+* boolean.
+
+---
+
+## Fase 8.3 — Criar normalizadores de datas
+
+Suportar:
+
+* formatos brasileiros;
+* formatos internacionais;
+* períodos;
+* mês e ano;
+* datas de Excel;
+* datas incompletas.
+
+---
+
+## Fase 8.4 — Criar normalizadores brasileiros
+
+Implementar:
+
+* CNPJ;
+* CPF;
+* CEP;
+* telefone;
+* inscrições;
+* documentos formatados.
+
+---
+
+## Fase 8.5 — Criar normalizadores contábeis
+
+Implementar:
+
+* código contábil;
+* débito;
+* crédito;
+* valores com `D` ou `C`;
+* parênteses negativos;
+* separadores brasileiros;
+* saldo.
+
+---
+
+## Fase 8.6 — Criar o Validator Registry
+
+Permitir validadores:
+
+* internos;
+* customizados;
+* compostos;
+* de campo;
+* de tabela;
+* de documento.
+
+---
+
+## Fase 8.7 — Criar validadores básicos
+
+Implementar:
+
+* obrigatório;
+* tipo;
+* tamanho;
+* regex;
+* enumeração;
+* intervalo;
+* unicidade.
+
+---
+
+## Fase 8.8 — Criar validadores brasileiros
+
+Implementar:
+
+* dígitos de CNPJ;
+* dígitos de CPF;
+* CEP;
+* formatos oficiais.
+
+---
+
+## Fase 8.9 — Criar validações matemáticas
+
+Suportar:
+
+* soma;
+* diferença;
+* total;
+* equilíbrio;
+* consistência entre colunas;
+* fórmulas declarativas.
+
+---
+
+## Fase 8.10 — Criar validações relacionais
+
+Comparar:
+
+* campos;
+* linhas;
+* tabelas;
+* páginas;
+* abas;
+* documentos.
+
+---
+
+## Fase 8.11 — Criar Confidence Model v1
+
+Dimensões:
+
+```text
+recognition
+structural
+template
+normalization
+validation
+consensus
+final
+```
+
+Documentar a fórmula inicial.
+
+---
+
+## Fase 8.12 — Criar ranking de candidatos
+
+Ordenar candidatos considerando:
+
+* evidência;
+* proximidade;
+* validação;
+* template;
+* método;
+* consistência;
+* confiança.
+
+---
+
+## Fase 8.13 — Criar o relatório de qualidade
+
+Resultado deve informar:
+
+* campos encontrados;
+* ausentes;
+* inválidos;
+* ambíguos;
+* confiança;
+* warnings;
+* validações;
+* evidências.
+
+---
+
+# BLOCO 9 — Inspector avançado, Router e Processing Plan
+
+Objetivo do bloco:
+
+> Fazer o motor escolher o menor processamento capaz de produzir o resultado esperado.
+
+## Fase 9.1 — Criar diagnóstico avançado de PDF
+
+Por página:
+
+* cobertura de texto;
+* cobertura de imagem;
+* caracteres inválidos;
+* densidade;
+* orientação;
+* resolução;
+* provável escaneamento;
+* possível tabela;
+* qualidade visual.
+
+---
+
+## Fase 9.2 — Criar diagnóstico avançado de Excel
+
+Por aba:
+
+* área utilizada;
+* densidade;
+* múltiplos blocos;
+* fórmulas;
+* células mescladas;
+* tabelas;
+* ocultos;
+* complexidade.
+
+---
+
+## Fase 9.3 — Criar Document Profile
+
+Perfis técnicos:
+
+```text
+digital_pdf
+scanned_pdf
+hybrid_pdf
+corrupted_text_pdf
+spreadsheet_simple
+spreadsheet_complex
+image_document
+unsupported
+```
+
+---
+
+## Fase 9.4 — Expandir metadados das capabilities
+
+Cada capability deve declarar:
+
+* formatos;
+* inputs;
+* outputs;
+* custo;
+* latência;
+* CPU ou GPU;
+* granularidade;
+* suporte regional;
+* determinismo.
+
+---
+
+## Fase 9.5 — Criar Processing Profiles
+
+Perfis:
+
+```text
+automatic
+fast
+balanced
+maximum_accuracy
+custom
+```
+
+---
+
+## Fase 9.6 — Criar Processing Policies
+
+Políticas independentes:
+
+```text
+never
+auto
+always
+on_demand
+on_low_confidence
+on_conflict
+below_threshold
+```
+
+---
+
+## Fase 9.7 — Criar o Processing Router v1
+
+Regras para decidir:
+
+* parsing nativo;
+* layout;
+* tabela;
+* renderização;
+* OCR;
+* semântica;
+* reconciliação;
+* revisão.
+
+---
+
+## Fase 9.8 — Criar o Processing Plan
+
+Modelo versionado com:
+
+* passos do documento;
+* passos por superfície;
+* dependências;
+* capabilities;
+* razões;
+* configurações;
+* cache;
+* escalonamentos.
+
+---
+
+## Fase 9.9 — Criar o Processing Planner
+
+Converter decisões do Router em tarefas executáveis.
+
+---
+
+## Fase 9.10 — Executar Processing Plan no LocalRuntime
+
+Executar:
+
+* dependências;
+* tarefas paralelas;
+* resultados;
+* falhas;
+* cancelamento;
+* progresso;
+* artefatos.
+
+---
+
+## Fase 9.11 — Criar escalonamento dinâmico
+
+Permitir que uma tarefa gere novas tarefas quando:
+
+* campo não encontrado;
+* tabela incompleta;
+* baixa confiança;
+* validação falhar;
+* método divergir.
+
+---
+
+## Fase 9.12 — Expor plano e explicações
+
+Biblioteca:
+
+```python
+await engine.plan(...)
+```
+
+API:
+
+```http
+POST /v1/documents:plan
+GET  /v1/extractions/{job_id}/plan
+```
+
+---
+
+# BLOCO 10 — Renderização, imagens e OCR seletivo
+
+Objetivo do bloco:
+
+> Processar somente páginas e regiões que realmente precisam de reconhecimento visual.
+
+## Fase 10.1 — Criar o Renderer Contract
+
+Suportar:
+
+* página;
+* região;
+* DPI;
+* escala;
+* rotação;
+* formato;
+* cor;
+* transparência.
+
+---
+
+## Fase 10.2 — Implementar o primeiro PDF Renderer
+
+Gerar artefatos:
+
+```text
+RenderedPageArtifact
+RenderedRegionArtifact
+```
+
+---
+
+## Fase 10.3 — Criar o Image Preprocessing Contract
+
+Transformações:
+
+* orientação;
+* deskew;
+* contraste;
+* binarização;
+* remoção de ruído;
+* perspectiva;
+* resize.
+
+---
+
+## Fase 10.4 — Implementar pré-processamento básico
+
+Criar pipeline configurável e versionado.
+
+---
+
+## Fase 10.5 — Criar o OCR Provider Contract
+
+Entrada:
+
+* imagem;
+* região;
+* idioma;
+* configuração.
+
+Saída:
+
+* palavras;
+* linhas;
+* blocos;
+* coordenadas;
+* confiança;
+* idioma;
+* orientação.
+
+---
+
+## Fase 10.6 — Implementar o primeiro provider de OCR
+
+Integrar um provider inicial sem acoplá-lo ao kernel.
+
+---
+
+## Fase 10.7 — Implementar OCR de página
+
+Executar OCR completo em uma página selecionada.
+
+---
+
+## Fase 10.8 — Implementar OCR regional
+
+Executar OCR somente em um recorte.
+
+---
+
+## Fase 10.9 — Implementar OCR de imagem incorporada
+
+Processar imagens específicas extraídas do PDF.
+
+---
+
+## Fase 10.10 — Mesclar OCR com documento canônico
+
+OCR e texto nativo devem coexistir.
+
+Não substituir silenciosamente um pelo outro.
+
+---
+
+## Fase 10.11 — Implementar roteamento seletivo de OCR
+
+Integrar OCR ao Processing Router.
+
+---
+
+## Fase 10.12 — Implementar cache de OCR
+
+Chave baseada em:
+
+* hash;
+* região;
+* preprocessamento;
+* provider;
+* versão;
+* idioma;
+* configuração.
+
+---
+
+## Fase 10.13 — Criar benchmark de OCR
+
+Avaliar:
+
+* qualidade;
+* custo;
+* tempo;
+* idioma;
+* tabelas;
+* páginas ruins;
+* recortes.
+
+---
+
+# BLOCO 11 — Semântica e modelos de IA
+
+Objetivo do bloco:
+
+> Utilizar modelos semânticos somente quando parsing, estrutura, templates e OCR não forem suficientes.
+
+## Fase 11.1 — Criar o Semantic Provider Contract
+
+Suportar:
+
+* texto;
+* imagem;
+* documento canônico;
+* schema;
+* instrução;
+* campos problemáticos;
+* evidências.
+
+---
+
+## Fase 11.2 — Criar o Semantic Context Builder
+
+Montar o menor contexto necessário:
+
+* página;
+* região;
+* texto;
+* OCR;
+* estrutura;
+* candidatos;
+* schema;
+* validações.
+
+---
+
+## Fase 11.3 — Implementar provider semântico inicial
+
+Integrar um provider sem acoplá-lo ao núcleo.
+
+---
+
+## Fase 11.4 — Criar fallback de classificação
+
+Utilizar semântica quando o matching estrutural não for suficiente.
+
+---
+
+## Fase 11.5 — Criar fallback de campo
+
+Solicitar ao modelo apenas campos ausentes ou ambíguos.
+
+---
+
+## Fase 11.6 — Criar fallback de tabela
+
+Enviar somente:
+
+* região da tabela;
+* cabeçalhos;
+* linhas incompletas;
+* schema esperado.
+
+---
+
+## Fase 11.7 — Criar extração orientada por schema
+
+Permitir extração sem template rígido utilizando o schema.
+
+---
+
+## Fase 11.8 — Criar controles de custo e tokens
+
+Registrar:
+
+* chamadas;
+* modelo;
+* tokens;
+* custo;
+* tempo;
+* motivo;
+* escopo.
+
+---
+
+## Fase 11.9 — Preservar evidência semântica
+
+Relacionar cada valor ao:
+
+* recorte;
+* elementos de entrada;
+* resposta;
+* provider;
+* versão;
+* confiança.
+
+---
+
+## Fase 11.10 — Proteger contra prompt injection documental
+
+Separar:
+
+* instruções do sistema;
+* schema;
+* conteúdo do documento;
+* dados não confiáveis.
+
+O documento nunca deve controlar o comportamento do agente.
+
+---
+
+# BLOCO 12 — Reconciliação e revisão humana
+
+Objetivo do bloco:
+
+> Resolver divergências e preparar casos realmente ambíguos para revisão.
+
+## Fase 12.1 — Criar o Reconciliation Engine
+
+Receber múltiplos candidatos de:
+
+* parser;
+* OCR;
+* template;
+* schema;
+* semântica;
+* regras.
+
+---
+
+## Fase 12.2 — Criar comparação de candidatos
+
+Comparar:
+
+* valores;
+* tipos;
+* evidências;
+* métodos;
+* confiança;
+* validações.
+
+---
+
+## Fase 12.3 — Criar regras de consenso
+
+Exemplos:
+
+```text
+dois métodos concordam
+validação matemática confirma
+template e OCR concordam
+valor semanticamente consistente
+```
+
+---
+
+## Fase 12.4 — Criar resolução determinística de conflitos
+
+Aplicar prioridade configurável por:
+
+* provider;
+* método;
+* tipo documental;
+* validação;
+* qualidade da evidência.
+
+---
+
+## Fase 12.5 — Criar o estado review_required
+
+Não tratar revisão como falha.
+
+Preservar resultado parcial.
+
+---
+
+## Fase 12.6 — Criar Review Package
+
+Incluir:
+
+* documento;
+* página;
+* recorte;
+* campo;
+* candidatos;
+* métodos;
+* confiança;
+* validações;
+* motivo.
+
+---
+
+## Fase 12.7 — Criar API de revisão
+
+Endpoints:
+
+```http
+GET  /v1/reviews
+GET  /v1/reviews/{review_id}
+POST /v1/reviews/{review_id}/decisions
+```
+
+---
+
+## Fase 12.8 — Criar biblioteca de revisão
+
+Permitir:
+
+```python
+await engine.list_reviews(...)
+await engine.get_review(...)
+await engine.submit_review_decision(...)
+```
+
+---
+
+## Fase 12.9 — Persistir correções estruturadas
+
+Registrar:
+
+* valor anterior;
+* valor corrigido;
+* motivo;
+* usuário;
+* evidência;
+* timestamp.
+
+---
+
+## Fase 12.10 — Criar dataset de feedback
+
+Transformar revisões em dados utilizáveis para:
+
+* benchmark;
+* melhoria de template;
+* melhoria de regras;
+* avaliação de providers.
+
+---
+
+# BLOCO 13 — Persistência e API de produção
+
+Objetivo do bloco:
+
+> Substituir adapters locais por infraestrutura durável sem alterar os contratos do motor.
+
+## Fase 13.1 — Criar portas de persistência
+
+Contratos para:
+
+```text
+DocumentRepository
+JobRepository
+ArtifactRepository
+ResultRepository
+TemplateRepository
+SchemaRepository
+ReviewRepository
+```
+
+---
+
+## Fase 13.2 — Criar modelo relacional
+
+Definir tabelas para:
+
+* documentos;
+* jobs;
+* planos;
+* artefatos;
+* resultados;
+* campos;
+* templates;
+* schemas;
+* revisões;
+* versões;
+* eventos.
+
+---
+
+## Fase 13.3 — Implementar adapter PostgreSQL
+
+Criar:
+
+* migrations;
+* repositories;
+* transactions;
+* índices;
+* paginação;
+* concorrência.
+
+---
+
+## Fase 13.4 — Implementar adapter MinIO/S3
+
+Armazenar:
+
+* originais;
+* renders;
+* recortes;
+* OCR;
+* documento canônico;
+* resultados;
+* exports.
+
+---
+
+## Fase 13.5 — Criar cache Redis opcional
+
+Utilizar para:
+
+* cache curto;
+* locks;
+* rate limiting;
+* coordenação;
+* resultados temporários.
+
+Não utilizar como fonte definitiva.
+
+---
+
+## Fase 13.6 — Criar idempotência na API
+
+Suportar:
+
+```text
+Idempotency-Key
+```
+
+Evitar jobs duplicados.
+
+---
+
+## Fase 13.7 — Criar autenticação e API keys
+
+Implementar:
+
+* credenciais;
+* escopos;
+* expiração;
+* revogação;
+* auditoria.
+
+---
+
+## Fase 13.8 — Criar isolamento por tenant
+
+Toda entidade persistida deve possuir contexto de tenant quando aplicável.
+
+---
+
+## Fase 13.9 — Criar webhooks
+
+Eventos:
+
+* job iniciado;
+* progresso;
+* concluído;
+* falha;
+* revisão necessária.
+
+---
+
+## Fase 13.10 — Criar Outbox Pattern
+
+Garantir entrega consistente de eventos após transações.
+
+---
+
+## Fase 13.11 — Criar retenção e exclusão
+
+Políticas para:
+
+* documentos;
+* artefatos;
+* resultados;
+* logs;
+* dados sensíveis.
+
+---
+
+## Fase 13.12 — Criar o Remote SDK Python
+
+Exemplo:
+
+```python
+engine = DocumentEngine.remote(
+    base_url="...",
+    api_key="..."
+)
+```
+
+Uso equivalente ao engine local.
+
+---
+
+# BLOCO 14 — Temporal e execução distribuída
+
+Objetivo do bloco:
+
+> Distribuir o processamento mantendo o mesmo kernel, contratos e capabilities.
+
+## Fase 14.1 — Estabilizar o ExecutionRuntime Contract
+
+Garantir equivalência entre:
+
+```text
+LocalRuntime
+TemporalRuntime
+```
+
+---
+
+## Fase 14.2 — Implementar o TemporalRuntime
+
+Converter tarefas do Processing Plan em workflows e activities.
+
+---
+
+## Fase 14.3 — Criar o workflow principal
+
+Fluxo:
+
+```text
+Inspect
+Plan
+Process
+Merge
+Extract
+Normalize
+Validate
+Reconcile
+Persist
+CompleteOrReview
+```
+
+---
+
+## Fase 14.4 — Criar workflows por página e região
+
+Permitir processamento paralelo e granular.
+
+---
+
+## Fase 14.5 — Criar o CPU Worker
+
+Executar:
+
+* inspeção;
+* parsing;
+* renderização;
+* templates;
+* normalização;
+* validação.
+
+---
+
+## Fase 14.6 — Criar o GPU Worker
+
+Executar:
+
+* OCR;
+* layout visual;
+* tabelas visuais;
+* modelos de visão.
+
+---
+
+## Fase 14.7 — Criar o Semantic Worker
+
+Executar:
+
+* LLM;
+* VLM;
+* extração semântica;
+* reconciliação avançada.
+
+---
+
+## Fase 14.8 — Criar task queues iniciais
+
+```text
+document.cpu
+document.gpu
+document.semantic
+```
+
+Não criar uma fila por capability inicialmente.
+
+---
+
+## Fase 14.9 — Criar retries e timeouts
+
+Configurar por capability:
+
+* timeout;
+* retry;
+* backoff;
+* erro não recuperável;
+* heartbeat.
+
+---
+
+## Fase 14.10 — Criar cancelamento distribuído
+
+Cancelar:
+
+* workflow;
+* atividades;
+* child workflows;
+* jobs;
+* artefatos pendentes.
+
+---
+
+## Fase 14.11 — Criar prioridades
+
+Prioridades por:
+
+* tenant;
+* perfil;
+* tipo de job;
+* SLA;
+* tamanho;
+* revisão.
+
+---
+
+## Fase 14.12 — Criar testes de paridade entre runtimes
+
+O mesmo corpus deve produzir resultado equivalente em:
+
+```text
+LocalRuntime
+TemporalRuntime
+```
+
+---
+
+# BLOCO 15 — Observabilidade, segurança e desempenho
+
+Objetivo do bloco:
+
+> Tornar o motor operável, auditável, seguro e mensurável.
+
+## Fase 15.1 — Criar logging estruturado
+
+Campos:
+
+* trace;
+* job;
+* documento;
+* tenant;
+* plano;
+* atividade;
+* capability;
+* provider;
+* artefato.
+
+---
+
+## Fase 15.2 — Criar tracing distribuído
+
+Seguir:
+
+```text
+requisição
+job
+workflow
+atividade
+artefato
+campo
+resultado
+```
+
+---
+
+## Fase 15.3 — Criar métricas técnicas
+
+Métricas:
+
+* latência;
+* throughput;
+* fila;
+* CPU;
+* memória;
+* GPU;
+* falhas;
+* retries;
+* cache.
+
+---
+
+## Fase 15.4 — Criar métricas documentais
+
+Métricas:
+
+* páginas;
+* OCR;
+* regiões;
+* tabelas;
+* campos;
+* confiança;
+* escalonamentos;
+* revisões.
+
+---
+
+## Fase 15.5 — Criar auditoria
+
+Registrar:
+
+* acessos;
+* alterações;
+* revisões;
+* templates;
+* schemas;
+* downloads;
+* exclusões.
+
+---
+
+## Fase 15.6 — Isolar parsers
+
+Executar parsers de documentos em processos ou ambientes limitados.
+
+---
+
+## Fase 15.7 — Criar proteção de recursos
+
+Limitar:
+
+* memória;
+* CPU;
+* páginas;
+* tamanho;
+* tempo;
+* descompactação;
+* concorrência.
+
+---
+
+## Fase 15.8 — Criar benchmark automatizado
+
+Executar corpus e comparar:
+
+* qualidade;
+* latência;
+* custo;
+* memória;
+* regressões.
+
+---
+
+## Fase 15.9 — Criar performance tests
+
+Testar:
+
+* PDFs grandes;
+* planilhas grandes;
+* muitos jobs;
+* processamento paralelo;
+* OCR;
+* downloads;
+* uploads.
+
+---
+
+## Fase 15.10 — Criar relatório de regressão
+
+Toda alteração relevante deve informar:
+
+* resultados alterados;
+* documentos afetados;
+* qualidade;
+* desempenho;
+* possíveis regressões.
+
+---
+
+# BLOCO 16 — Produto e ecossistema
+
+Objetivo do bloco:
+
+> Construir ferramentas visuais e integrações sobre o motor já estável.
+
+## Fase 16.1 — Criar API de preview
+
+Disponibilizar:
+
+* página renderizada;
+* regiões;
+* elementos;
+* tabelas;
+* evidências;
+* coordenadas.
+
+---
+
+## Fase 16.2 — Criar Document Viewer
+
+Frontend para:
+
+* navegar páginas;
+* visualizar Excel;
+* destacar elementos;
+* selecionar regiões;
+* exibir evidências.
+
+---
+
+## Fase 16.3 — Criar Template Builder básico
+
+Permitir:
+
+* escolher documento;
+* selecionar campo;
+* criar âncora;
+* criar relação;
+* testar;
+* visualizar resultado;
+* salvar versão.
+
+---
+
+## Fase 16.4 — Criar Schema Builder
+
+Permitir definir:
+
+* campos;
+* objetos;
+* listas;
+* tabelas;
+* tipos;
+* obrigatoriedade.
+
+---
+
+## Fase 16.5 — Criar identificação assistida de variáveis
+
+O sistema sugere:
+
+* campos;
+* tabelas;
+* listas;
+* rótulos;
+* tipos;
+* relações.
+
+O usuário confirma ou corrige.
+
+---
+
+## Fase 16.6 — Criar Review UI
+
+Mostrar:
+
+* documento;
+* região;
+* candidatos;
+* evidências;
+* confiança;
+* validações;
+* formulário de decisão.
+
+---
+
+## Fase 16.7 — Criar administração de providers
+
+Permitir:
+
+* listar;
+* ativar;
+* desativar;
+* configurar;
+* testar;
+* comparar;
+* visualizar custo.
+
+---
+
+## Fase 16.8 — Criar dashboard de jobs
+
+Exibir:
+
+* status;
+* duração;
+* erros;
+* revisões;
+* custos;
+* perfil;
+* provider;
+* tenant.
+
+---
+
+## Fase 16.9 — Criar dashboard de qualidade
+
+Exibir:
+
+* precisão;
+* confiança;
+* revisão;
+* regressões;
+* tipos documentais;
+* providers;
+* templates.
+
+---
+
+## Fase 16.10 — Criar SDK TypeScript
+
+Oferecer:
+
+* cliente remoto;
+* tipos;
+* upload;
+* jobs;
+* resultados;
+* revisão;
+* erros.
+
+---
+
+## Fase 16.11 — Criar exporters
+
+Exportar:
+
+* JSON;
+* CSV;
+* XLSX;
+* XML;
+* formato customizado;
+* pacote de evidências.
+
+---
+
+## Fase 16.12 — Criar sistema de releases
+
+Implementar:
+
+* versionamento semântico;
+* changelog;
+* releases;
+* publicação de pacotes;
+* imagens Docker;
+* migrations;
+* compatibilidade.
+
+---
+
+# Marcos principais
+
+## Marco 1 — Fundação reutilizável
+
+Fases:
+
+```text
+Blocos 0 e 1
+```
+
+Resultado:
+
+```text
+monorepo
+contexto
+kernel
+biblioteca
+API
+CLI
+LocalRuntime
+contratos
+```
+
+---
+
+## Marco 2 — Extração nativa utilizável
+
+Fases:
+
+```text
+Blocos 2, 3, 4 e 5
+```
+
+Resultado:
+
+```text
+ingestão
+PDF digital
+Excel
+documento canônico
+evidências
+```
+
+---
+
+## Marco 3 — Extração estruturada confiável
+
+Fases:
+
+```text
+Blocos 6, 7 e 8
+```
+
+Resultado:
+
+```text
+estrutura
+tabelas
+listas
+hierarquias
+schemas
+templates
+normalização
+validação
+confiança
+```
+
+---
+
+## Marco 4 — Motor adaptativo
+
+Fases:
+
+```text
+Blocos 9, 10, 11 e 12
+```
+
+Resultado:
+
+```text
+Inspector
+Router
+Processing Plan
+OCR seletivo
+semântica
+reconciliação
+revisão
+```
+
+---
+
+## Marco 5 — Plataforma de produção
+
+Fases:
+
+```text
+Blocos 13, 14 e 15
+```
+
+Resultado:
+
+```text
+PostgreSQL
+MinIO
+API de produção
+Remote SDK
+Temporal
+workers
+observabilidade
+segurança
+escala
+```
+
+---
+
+## Marco 6 — Produto completo
+
+Fases:
+
+```text
+Bloco 16
+```
+
+Resultado:
+
+```text
+preview
+Template Builder
+Schema Builder
+Review UI
+dashboards
+SDK TypeScript
+ecossistema
+```
+
+---
+
+# Ordem prioritária para começar
+
+A sequência inicial recomendada é:
+
+```text
+0.1 até 0.5
+1.1 até 1.11
+2.1 até 2.8
+3.1 até 3.10
+4.1 até 4.10
+5.1 até 5.10
+```
+
+Esse primeiro conjunto já entrega:
+
+> Um motor reutilizável desde o início, acessível como biblioteca, API e CLI, capaz de receber, inspecionar e extrair nativamente documentos PDF e Excel com estrutura, artefatos e evidências.

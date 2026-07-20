@@ -1,0 +1,1691 @@
+# Fases revisadas — Motor de Inteligência Documental reutilizável desde o início
+
+## 1. Princípio obrigatório
+
+Toda funcionalidade deve ser implementada uma única vez no núcleo e imediatamente disponibilizada por:
+
+```text
+Biblioteca Python
+API REST
+CLI de desenvolvimento
+```
+
+O fluxo arquitetural deve ser:
+
+```text
+                 ┌─────────────────────┐
+                 │   Biblioteca Python │
+                 └──────────┬──────────┘
+                            │
+┌─────────────┐    ┌────────▼────────┐    ┌─────────────┐
+│  REST API   ├───►│ Application API │◄───┤     CLI     │
+└─────────────┘    └────────┬────────┘    └─────────────┘
+                            │
+                   ┌────────▼────────┐
+                   │ Document Engine │
+                   └────────┬────────┘
+                            │
+                   ┌────────▼────────┐
+                   │  Capabilities   │
+                   └─────────────────┘
+```
+
+A API não deve implementar extração.
+
+A biblioteca não deve implementar uma versão diferente da extração.
+
+Ambas utilizam os mesmos casos de uso da camada de aplicação.
+
+---
+
+# 2. Regra de entrega de todas as fases
+
+Uma funcionalidade só pode ser considerada concluída quando possuir:
+
+1. implementação no núcleo ou capability correspondente;
+2. caso de uso na camada de aplicação;
+3. método público na biblioteca;
+4. endpoint na API;
+5. contrato de entrada e saída versionado;
+6. testes unitários;
+7. testes de integração;
+8. teste de paridade entre biblioteca e API;
+9. exemplo de utilização;
+10. documentação mínima.
+
+Exemplo:
+
+```text
+Funcionalidade: inspecionar PDF
+
+Núcleo:
+    DocumentInspector.inspect()
+
+Biblioteca:
+    await engine.inspect("arquivo.pdf")
+
+API:
+    POST /v1/documents:inspect
+
+CLI:
+    document-engine inspect arquivo.pdf
+```
+
+O resultado produzido pelos três caminhos deve ser semanticamente equivalente.
+
+---
+
+# 3. Estrutura arquitetural inicial
+
+```text
+document-intelligence-engine/
+│
+├── apps/
+│   ├── api/
+│   └── cli/
+│
+├── packages/
+│   ├── document-core/
+│   ├── document-model/
+│   ├── document-application/
+│   ├── document-engine/
+│   ├── document-sdk-python/
+│   ├── artifacts/
+│   ├── plugins/
+│   └── runtime-local/
+│
+├── adapters/
+│   ├── pdf-native/
+│   ├── excel-native/
+│   ├── storage-local/
+│   └── cache-memory/
+│
+├── contracts/
+│   ├── openapi/
+│   ├── json-schema/
+│   └── events/
+│
+├── examples/
+│   ├── python-library/
+│   ├── rest-api/
+│   └── cli/
+│
+└── tests/
+    ├── unit/
+    ├── integration/
+    ├── contract/
+    ├── parity/
+    ├── golden/
+    └── corpus/
+```
+
+## Responsabilidade de cada camada
+
+```text
+document-core
+    Tipos fundamentais, erros, identificadores e resultados.
+
+document-model
+    Modelo documental canônico.
+
+document-application
+    Casos de uso públicos do sistema.
+
+document-engine
+    Coordenação do processamento.
+
+document-sdk-python
+    Interface amigável para importação em projetos.
+
+apps/api
+    Adaptação HTTP dos casos de uso.
+
+apps/cli
+    Ferramenta para desenvolvimento, testes e diagnóstico.
+
+adapters
+    Implementações concretas de parsers, storage, OCR e providers.
+```
+
+---
+
+# 4. Interfaces públicas iniciais
+
+Desde a primeira fase, a biblioteca deve possuir uma interface semelhante a:
+
+```python
+from document_engine import DocumentEngine
+
+engine = DocumentEngine.local()
+
+inspection = await engine.inspect("arquivo.pdf")
+document = await engine.parse("arquivo.pdf")
+result = await engine.process("arquivo.pdf")
+```
+
+Também deve existir submissão em formato de job:
+
+```python
+job = await engine.submit(
+    source="arquivo.pdf",
+    profile="balanced"
+)
+
+status = await job.status()
+result = await job.result()
+```
+
+Inicialmente, o job pode executar no próprio processo.
+
+No futuro, o mesmo contrato poderá utilizar Temporal.
+
+## API inicial
+
+```http
+POST /v1/documents:inspect
+POST /v1/documents:parse
+POST /v1/extractions
+GET  /v1/extractions/{job_id}
+GET  /v1/extractions/{job_id}/result
+```
+
+A API pode começar utilizando:
+
+```text
+LocalRuntime
+armazenamento local
+job store em memória ou SQLite
+```
+
+Não é necessário começar com PostgreSQL, MinIO e Temporal para disponibilizar a API.
+
+---
+
+# 5. Visão geral das fases
+
+```mermaid
+flowchart TB
+
+    B0["BLOCO 0<br/>Contratos, corpus e critérios de qualidade"]
+
+    B1["BLOCO 1<br/>Fundação reutilizável<br/>Kernel + Biblioteca + API + CLI"]
+
+    B2["BLOCO 2<br/>Extração nativa de PDF"]
+
+    B3["BLOCO 3<br/>Extração nativa de Excel"]
+
+    B4["BLOCO 4<br/>Modelo canônico e evidências completas"]
+
+    B5["BLOCO 5<br/>Reconstrução estrutural<br/>Tabelas, listas e hierarquias"]
+
+    B6["BLOCO 6<br/>Extração por schema e templates"]
+
+    B7["BLOCO 7<br/>Normalização, validação e confiança"]
+
+    B8["BLOCO 8<br/>Inspector, Router e planos adaptativos"]
+
+    B9["BLOCO 9<br/>OCR seletivo e reconstrução visual"]
+
+    B10["BLOCO 10<br/>Semântica, reconciliação e revisão"]
+
+    B11["BLOCO 11<br/>Persistência e API de produção"]
+
+    B12["BLOCO 12<br/>Temporal e execução distribuída"]
+
+    B13["BLOCO 13<br/>Template Builder, Review UI e ecossistema"]
+
+    B0 --> B1
+    B1 --> B2
+    B2 --> B3
+    B3 --> B4
+    B4 --> B5
+    B5 --> B6
+    B6 --> B7
+    B7 --> B8
+    B8 --> B9
+    B9 --> B10
+    B10 --> B11
+    B11 --> B12
+    B12 --> B13
+
+    B3 -.-> M1["MVP reutilizável PDF + Excel"]
+    B7 -.-> M2["MVP confiável de extração"]
+    B10 -.-> M3["Motor adaptativo inteligente"]
+    B12 -.-> M4["Plataforma distribuída"]
+```
+
+---
+
+# BLOCO 0 — Contratos, corpus e critérios de qualidade
+
+## Objetivo
+
+Definir o comportamento público do motor antes de implementar parsers e infraestrutura.
+
+## Escopo
+
+Criar:
+
+```text
+ProcessingRequest
+ProcessingResult
+InspectionResult
+ParseResult
+ExtractionJob
+DocumentSource
+DocumentArtifact
+DocumentElement
+Evidence
+BoundingBox
+SurfaceReference
+FieldResult
+TableResult
+ErrorResult
+```
+
+## Corpus inicial
+
+```text
+tests/corpus/
+├── pdf/
+│   ├── digital/
+│   ├── scanned/
+│   ├── hybrid/
+│   ├── tables/
+│   ├── hierarchical/
+│   └── malformed/
+│
+└── excel/
+    ├── simple/
+    ├── multi-sheet/
+    ├── merged-cells/
+    ├── formulas/
+    ├── hidden-data/
+    ├── multiple-tables/
+    └── accounting/
+```
+
+Cada documento deve possuir um resultado esperado.
+
+```json
+{
+  "document": "balancete_digital.pdf",
+  "expected": {
+    "page_count": 12,
+    "document_profile": "digital_pdf",
+    "company_name": "Empresa Exemplo Ltda.",
+    "accounts_count": 142
+  }
+}
+```
+
+## Biblioteca
+
+Mesmo antes dos parsers completos, definir as assinaturas:
+
+```python
+await engine.inspect(source)
+await engine.parse(source)
+await engine.process(request)
+await engine.submit(request)
+```
+
+## API
+
+Definir OpenAPI inicial:
+
+```http
+POST /v1/documents:inspect
+POST /v1/documents:parse
+POST /v1/extractions
+GET  /v1/extractions/{job_id}
+GET  /v1/extractions/{job_id}/result
+```
+
+Os endpoints podem retornar `not_supported` para capabilities ainda não implementadas, mas os contratos já devem existir.
+
+## Critério de conclusão
+
+* contratos versionados;
+* corpus inicial criado;
+* OpenAPI publicado;
+* modelos Python criados;
+* documentação dos estados e erros;
+* nenhuma lógica duplicada entre API e biblioteca.
+
+---
+
+# BLOCO 1 — Fundação reutilizável
+
+## Objetivo
+
+Criar um fluxo completo, ainda simples, que funcione por biblioteca, API e CLI.
+
+## Componentes
+
+```text
+DocumentEngine
+ApplicationService
+LocalRuntime
+PluginRegistry
+LocalArtifactStore
+InMemoryJobStore
+SourceResolver
+API REST
+Python SDK
+CLI
+```
+
+## Fluxo inicial
+
+```text
+Arquivo
+   ↓
+SourceResolver
+   ↓
+DocumentEngine
+   ↓
+Capability
+   ↓
+Artifact
+   ↓
+ProcessingResult
+```
+
+## Biblioteca
+
+```python
+engine = DocumentEngine.local()
+
+result = await engine.process(
+    ProcessingRequest(source="arquivo.pdf")
+)
+```
+
+## API
+
+```http
+POST /v1/extractions
+```
+
+Resposta:
+
+```json
+{
+  "job_id": "job_123",
+  "status": "queued"
+}
+```
+
+Mesmo que a execução ocorra imediatamente no mesmo processo, o contrato já deve ser baseado em job.
+
+## CLI
+
+```bash
+document-engine process arquivo.pdf
+```
+
+## Paridade obrigatória
+
+O teste deve confirmar:
+
+```text
+LibraryResult ≈ APIResult ≈ CLIResult
+```
+
+Ignorando apenas metadados de transporte, como URL e horário da requisição.
+
+## Critério de conclusão
+
+Um capability fictício ou muito simples consegue ser executado pelos três meios sem duplicação de código.
+
+---
+
+# BLOCO 2 — Extração nativa de PDF
+
+## Objetivo
+
+Construir uma extração de PDF digital forte, preservando estrutura, geometria e evidência.
+
+## Capabilities
+
+```text
+PDFInspectionCapability
+PDFNativeParseCapability
+PDFRenderCapability
+```
+
+## Informações extraídas
+
+* número de páginas;
+* dimensão;
+* rotação;
+* texto;
+* palavras;
+* spans;
+* coordenadas;
+* fontes;
+* tamanho;
+* negrito;
+* itálico;
+* cores quando relevante;
+* imagens;
+* vetores;
+* linhas desenhadas;
+* links;
+* metadados;
+* ordem original;
+* camada de texto;
+* cobertura de imagem.
+
+## Resultado esperado
+
+```json
+{
+  "type": "text_span",
+  "text": "Valor total",
+  "surface": {
+    "type": "page",
+    "index": 1
+  },
+  "bounding_box": {
+    "x": 82.5,
+    "y": 140.2,
+    "width": 92.4,
+    "height": 14.0
+  },
+  "font": {
+    "name": "Arial",
+    "size": 10,
+    "bold": true
+  },
+  "source": {
+    "method": "pdf_native"
+  }
+}
+```
+
+## Biblioteca
+
+```python
+inspection = await engine.inspect("documento.pdf")
+parsed = await engine.parse("documento.pdf")
+```
+
+## API
+
+```http
+POST /v1/documents:inspect
+POST /v1/documents:parse
+```
+
+## CLI
+
+```bash
+document-engine inspect documento.pdf
+document-engine parse documento.pdf --output parsed.json
+```
+
+## Critérios de conclusão
+
+* texto mantém página e posição;
+* imagens e vetores são identificados;
+* fontes relevantes são preservadas;
+* evidências apontam para o PDF original;
+* PDF digital não passa por OCR;
+* resultado idêntico pela biblioteca e API.
+
+---
+
+# BLOCO 3 — Extração nativa de Excel
+
+## Objetivo
+
+Processar Excel diretamente, sem converter planilha para PDF.
+
+## Capabilities
+
+```text
+ExcelInspectionCapability
+ExcelNativeParseCapability
+SpreadsheetRegionDetectionCapability
+```
+
+## Informações extraídas
+
+* workbook;
+* abas;
+* ordem das abas;
+* células;
+* endereço;
+* valor bruto;
+* valor exibido;
+* fórmula;
+* tipo;
+* formato numérico;
+* estilo;
+* bordas;
+* células mescladas;
+* linhas;
+* colunas;
+* dimensões;
+* dados ocultos;
+* filtros;
+* tabelas estruturadas;
+* nomes definidos;
+* comentários;
+* hyperlinks;
+* áreas utilizadas.
+
+## Modelo de superfície
+
+Excel não deve ser forçado ao modelo de páginas.
+
+```text
+Document
+└── Surfaces
+    ├── Page
+    └── Sheet
+```
+
+## Exemplo
+
+```json
+{
+  "type": "spreadsheet_cell",
+  "surface": {
+    "type": "sheet",
+    "name": "Balancete"
+  },
+  "address": "D12",
+  "raw_value": 15000,
+  "display_value": "15.000,00",
+  "formula": null,
+  "data_type": "number",
+  "number_format": "#,##0.00"
+}
+```
+
+## Biblioteca
+
+```python
+workbook = await engine.parse("balancete.xlsx")
+```
+
+## API
+
+```http
+POST /v1/documents:parse
+```
+
+O mesmo endpoint identifica o formato automaticamente.
+
+## Critérios de conclusão
+
+* múltiplas abas;
+* valores e fórmulas diferenciados;
+* células mescladas;
+* formatos numéricos;
+* dados ocultos;
+* evidência por aba e endereço;
+* resultado equivalente por biblioteca e API.
+
+## Marco
+
+Ao final deste bloco existe o:
+
+> MVP reutilizável de extração nativa de PDF e Excel.
+
+Desde esse momento, outros projetos já podem importar a biblioteca ou consumir a API.
+
+---
+
+# BLOCO 4 — Modelo documental canônico e evidências
+
+## Objetivo
+
+Unificar PDF e Excel sem apagar suas diferenças.
+
+## Modelo
+
+```text
+CanonicalDocument
+├── Metadata
+├── Surfaces
+│   ├── Page
+│   └── Sheet
+├── Elements
+├── Regions
+├── Relationships
+├── Structures
+├── Artifacts
+└── Provenance
+```
+
+## Abstrações comuns
+
+* elemento;
+* superfície;
+* região;
+* posição;
+* conteúdo;
+* estilo;
+* relação;
+* origem;
+* evidência;
+* confiança.
+
+## Evidência de PDF
+
+```json
+{
+  "surface": "page:1",
+  "element_id": "el_101",
+  "bounding_box": {
+    "x": 100,
+    "y": 200,
+    "width": 120,
+    "height": 16
+  }
+}
+```
+
+## Evidência de Excel
+
+```json
+{
+  "surface": "sheet:Balancete",
+  "element_id": "cell_D12",
+  "cell": "D12"
+}
+```
+
+## Biblioteca
+
+```python
+document = await engine.build_canonical_document(source)
+```
+
+## API
+
+```http
+POST /v1/documents:canonicalize
+GET  /v1/documents/{document_id}/canonical
+```
+
+## Critério de conclusão
+
+PDF e Excel podem ser consultados por uma API documental comum, preservando suas características específicas.
+
+---
+
+# BLOCO 5 — Reconstrução estrutural
+
+## Objetivo
+
+Transformar elementos brutos em estruturas compreensíveis.
+
+## PDF
+
+Detectar:
+
+* linhas;
+* parágrafos;
+* blocos;
+* títulos;
+* seções;
+* colunas;
+* listas;
+* cabeçalhos;
+* rodapés;
+* pares rótulo-valor;
+* tabelas;
+* hierarquias.
+
+## Excel
+
+Detectar:
+
+* regiões utilizadas;
+* tabelas;
+* seções;
+* cabeçalhos;
+* totais;
+* subtabelas;
+* linhas hierárquicas;
+* múltiplos blocos;
+* relações entre células.
+
+## Capabilities
+
+```text
+TextLineBuilder
+BlockBuilder
+SectionDetector
+LabelValueDetector
+ListDetector
+TableDetector
+HierarchyDetector
+SpreadsheetRegionDetector
+```
+
+## Biblioteca
+
+```python
+structured = await engine.analyze_structure(source)
+```
+
+## API
+
+```http
+POST /v1/documents:analyze-structure
+```
+
+## Resultado
+
+```json
+{
+  "sections": [],
+  "tables": [],
+  "lists": [],
+  "label_value_pairs": [],
+  "hierarchies": []
+}
+```
+
+## Critério de conclusão
+
+Um balancete PDF ou Excel é identificado como:
+
+```text
+Dados da empresa
+Dados do período
+Tabela de contas
+Hierarquia de contas
+Totais
+```
+
+---
+
+# BLOCO 6 — Extração por schema e templates
+
+## Objetivo
+
+Converter a estrutura documental em dados de negócio.
+
+## Schema declarativo
+
+```json
+{
+  "company": {
+    "name": {
+      "type": "string",
+      "required": true
+    },
+    "cnpj": {
+      "type": "cnpj",
+      "required": true
+    }
+  },
+  "accounts": {
+    "type": "table",
+    "columns": {
+      "code": "string",
+      "description": "string",
+      "balance": "decimal"
+    }
+  }
+}
+```
+
+## Template
+
+```yaml
+field: company.cnpj
+
+anchor:
+  text: CNPJ
+
+search:
+  relation: right_of
+  maximum_distance: 200
+
+normalize:
+  - cnpj
+
+validate:
+  - cnpj_checksum
+```
+
+## Estratégias iniciais
+
+* à direita;
+* abaixo;
+* mesma linha;
+* mesma região;
+* tabela após título;
+* coluna por cabeçalho;
+* intervalo de Excel;
+* seção entre títulos;
+* linha por código;
+* lista hierárquica.
+
+## Biblioteca
+
+```python
+result = await engine.extract(
+    source="balancete.pdf",
+    schema=schema
+)
+```
+
+## API
+
+```http
+POST /v1/extractions
+```
+
+Request:
+
+```json
+{
+  "document_id": "doc_123",
+  "schema": {},
+  "profile": "fast"
+}
+```
+
+## Critério de conclusão
+
+O mesmo schema produz estrutura equivalente para um balancete em PDF ou Excel.
+
+---
+
+# BLOCO 7 — Normalização, validação e confiança inicial
+
+## Objetivo
+
+Produzir valores tipados e verificáveis.
+
+## Normalizadores
+
+* texto;
+* inteiro;
+* decimal;
+* moeda;
+* percentual;
+* data;
+* CNPJ;
+* CPF;
+* código contábil;
+* débito e crédito;
+* negativos entre parênteses;
+* espaços invisíveis.
+
+## Validadores
+
+* obrigatório;
+* tipo;
+* formato;
+* checksum;
+* intervalo;
+* enumeração;
+* duplicidade;
+* consistência;
+* total;
+* equação;
+* referência cruzada.
+
+## Confiança inicial
+
+```json
+{
+  "recognition": 0.99,
+  "structural": 0.94,
+  "template": 0.97,
+  "validation": 1.0,
+  "final": 0.97
+}
+```
+
+## Biblioteca
+
+```python
+result = await engine.process(
+    source="balancete.pdf",
+    schema=schema,
+    profile="fast"
+)
+```
+
+## API
+
+```http
+POST /v1/extractions
+GET  /v1/extractions/{job_id}/result
+```
+
+## Critério de conclusão
+
+Cada campo retorna:
+
+* valor bruto;
+* valor normalizado;
+* tipo;
+* evidência;
+* validações;
+* confiança;
+* warnings.
+
+## Marco
+
+Ao final deste bloco existe o:
+
+> MVP confiável e reutilizável de extração PDF e Excel.
+
+---
+
+# BLOCO 8 — Inspector, Router e planos adaptativos
+
+## Objetivo
+
+Escolher automaticamente o melhor processamento.
+
+## Inspector
+
+Detectar:
+
+* PDF digital;
+* PDF escaneado;
+* PDF híbrido;
+* texto corrompido;
+* página como imagem;
+* tabela em imagem;
+* cobertura de texto;
+* cobertura de imagem;
+* orientação;
+* qualidade.
+
+Para Excel:
+
+* complexidade;
+* múltiplas regiões;
+* fórmulas;
+* células mescladas;
+* tabelas;
+* áreas ocultas.
+
+## Processing Router
+
+```text
+PDF digital
+    → native_parse
+    → structural_analysis
+
+PDF escaneado
+    → render
+    → OCR
+    → structural_analysis
+
+PDF híbrido
+    → processamento diferente por página
+
+Excel
+    → excel_native_parse
+    → spreadsheet_structure_analysis
+```
+
+## Processing Plan
+
+```json
+{
+  "profile": "balanced",
+  "surfaces": [
+    {
+      "surface": "page:1",
+      "steps": ["native_parse", "layout"]
+    },
+    {
+      "surface": "page:2",
+      "steps": ["render", "ocr", "layout"]
+    }
+  ]
+}
+```
+
+## Biblioteca
+
+```python
+plan = await engine.plan(
+    source="documento.pdf",
+    profile="balanced"
+)
+```
+
+## API
+
+```http
+POST /v1/documents:plan
+GET  /v1/extractions/{job_id}/plan
+```
+
+## Critério de conclusão
+
+O consumidor pode visualizar o plano antes ou depois da execução, tanto pela biblioteca quanto pela API.
+
+---
+
+# BLOCO 9 — OCR seletivo
+
+## Objetivo
+
+Adicionar OCR por página, região, tabela ou campo.
+
+## Ordem
+
+1. OCR de página;
+2. OCR de região;
+3. OCR de tabela;
+4. OCR de verificação.
+
+## Capabilities
+
+```text
+ImagePreprocessingCapability
+PageOCRCapability
+RegionOCRCapability
+TableOCRCapability
+OCRMergeCapability
+```
+
+## Regra obrigatória
+
+OCR não substitui automaticamente o texto nativo.
+
+```text
+native candidate
+OCR candidate
+```
+
+Os dois permanecem disponíveis para comparação.
+
+## Biblioteca
+
+```python
+result = await engine.process(
+    source="documento_hibrido.pdf",
+    profile="balanced"
+)
+```
+
+Também pode haver chamada direta:
+
+```python
+ocr_result = await engine.ocr_region(
+    source="documento.pdf",
+    page=5,
+    region=bounding_box
+)
+```
+
+## API
+
+```http
+POST /v1/documents/{document_id}/pages/{page}/ocr
+POST /v1/documents/{document_id}/regions:ocr
+```
+
+## Critério de conclusão
+
+PDFs híbridos utilizam texto nativo onde possível e OCR somente onde necessário.
+
+---
+
+# BLOCO 10 — Semântica, reconciliação e revisão
+
+## Objetivo
+
+Resolver campos ambíguos ou ausentes sem enviar todo o documento para IA.
+
+## Semantic Engine
+
+Recebe somente:
+
+* página relevante;
+* região;
+* texto;
+* OCR;
+* estrutura;
+* schema;
+* candidatos;
+* campos ausentes;
+* evidências.
+
+## Reconciliação
+
+Compara:
+
+* parser nativo;
+* OCR;
+* template;
+* schema;
+* modelo semântico;
+* validações;
+* equações.
+
+## Revisão
+
+Status:
+
+```text
+review_required
+```
+
+O resultado parcial continua disponível.
+
+## Biblioteca
+
+```python
+result = await engine.process(
+    source="documento.pdf",
+    profile="maximum_accuracy"
+)
+
+if result.review_required:
+    review = result.review_package
+```
+
+## API
+
+```http
+GET  /v1/reviews
+GET  /v1/reviews/{review_id}
+POST /v1/reviews/{review_id}/decisions
+```
+
+## Critério de conclusão
+
+O motor explica por que:
+
+* aceitou um candidato;
+* rejeitou outro;
+* chamou IA;
+* executou OCR;
+* solicitou revisão.
+
+## Marco
+
+Ao final deste bloco existe o:
+
+> Motor adaptativo de inteligência documental reutilizável por biblioteca e API.
+
+---
+
+# BLOCO 11 — Persistência e API de produção
+
+## Objetivo
+
+Substituir implementações locais sem alterar os contratos públicos.
+
+## Trocas de adapters
+
+```text
+LocalArtifactStore → MinIO ou S3
+InMemoryJobStore   → PostgreSQL
+MemoryCache        → Redis
+LocalEventStream   → Outbox
+```
+
+## A API já existe
+
+Este bloco não cria a API.
+
+Ele torna a API existente adequada para produção:
+
+* autenticação;
+* autorização;
+* tenants;
+* API keys;
+* rate limiting;
+* persistência;
+* retenção;
+* webhooks;
+* paginação;
+* auditoria;
+* idempotency keys;
+* uploads grandes;
+* URLs assinadas.
+
+## Biblioteca
+
+Continua funcionando localmente:
+
+```python
+engine = DocumentEngine.local()
+```
+
+Também pode consumir servidor remoto:
+
+```python
+from document_engine import RemoteDocumentEngine
+
+engine = RemoteDocumentEngine(
+    base_url="...",
+    api_key="..."
+)
+```
+
+Os dois devem seguir interfaces semelhantes.
+
+## Critério de conclusão
+
+Um projeto pode escolher:
+
+```text
+motor embarcado
+ou
+motor remoto
+```
+
+Sem alterar significativamente seu código de negócio.
+
+---
+
+# BLOCO 12 — Temporal e execução distribuída
+
+## Objetivo
+
+Trocar o runtime sem alterar o engine nem os consumidores.
+
+## Runtime
+
+```text
+LocalRuntime
+TemporalRuntime
+```
+
+## Workers iniciais
+
+```text
+CPU Worker
+├── inspector
+├── PDF parser
+├── Excel parser
+├── render
+├── templates
+├── normalização
+└── validação
+
+GPU Worker
+├── OCR
+├── layout visual
+└── tabelas visuais
+
+Semantic Worker
+├── LLM
+├── VLM
+├── schema extraction
+└── reconciliação
+```
+
+## Filas iniciais
+
+```text
+document.cpu
+document.gpu
+document.semantic
+```
+
+## Biblioteca local
+
+Continua utilizando:
+
+```text
+LocalRuntime
+```
+
+## API distribuída
+
+Utiliza:
+
+```text
+TemporalRuntime
+```
+
+A funcionalidade é a mesma.
+
+## Critério de conclusão
+
+O mesmo teste funcional passa utilizando:
+
+```text
+LocalRuntime
+TemporalRuntime
+```
+
+## Marco
+
+Ao final deste bloco existe a:
+
+> Plataforma distribuída de inteligência documental.
+
+---
+
+# BLOCO 13 — Produto e ecossistema
+
+## Objetivo
+
+Construir ferramentas sobre contratos já estáveis.
+
+## Componentes
+
+* Template Builder;
+* preview;
+* seleção de regiões;
+* criação de schema;
+* identificação assistida;
+* review UI;
+* dashboard;
+* administração de providers;
+* histórico de versões;
+* benchmark;
+* SDK TypeScript;
+* webhooks avançados;
+* multi-tenancy;
+* controle de custos;
+* marketplace futuro de capabilities.
+
+Esses componentes consomem a mesma API pública.
+
+---
+
+# 6. Marcos de entrega
+
+## Marco 1 — Fundação reutilizável
+
+Blocos:
+
+```text
+0 e 1
+```
+
+Entrega:
+
+```text
+Kernel local
+Biblioteca Python
+API REST
+CLI
+Contratos compartilhados
+```
+
+Ainda sem extração avançada.
+
+---
+
+## Marco 2 — Extração nativa reutilizável
+
+Blocos:
+
+```text
+2, 3 e 4
+```
+
+Entrega:
+
+```text
+PDF digital
+Excel
+Modelo canônico
+Evidências
+Biblioteca
+API
+```
+
+Outros projetos já podem consumir o motor.
+
+---
+
+## Marco 3 — Extração estruturada confiável
+
+Blocos:
+
+```text
+5, 6 e 7
+```
+
+Entrega:
+
+```text
+Tabelas
+Listas
+Hierarquias
+Schemas
+Templates
+Normalização
+Validação
+Confiança
+```
+
+---
+
+## Marco 4 — Inteligência adaptativa
+
+Blocos:
+
+```text
+8, 9 e 10
+```
+
+Entrega:
+
+```text
+Inspector
+Router
+Processing Plan
+OCR seletivo
+Semântica
+Reconciliação
+Revisão
+```
+
+---
+
+## Marco 5 — Operação em produção
+
+Blocos:
+
+```text
+11 e 12
+```
+
+Entrega:
+
+```text
+PostgreSQL
+MinIO
+Redis opcional
+Temporal
+Workers
+Escala horizontal
+```
+
+---
+
+# 7. Padrão de implementação vertical
+
+Cada nova funcionalidade deve seguir esta sequência:
+
+```text
+1. Definir contrato
+        ↓
+2. Implementar capability
+        ↓
+3. Integrar ao DocumentEngine
+        ↓
+4. Expor na biblioteca
+        ↓
+5. Expor na API
+        ↓
+6. Expor na CLI quando útil
+        ↓
+7. Criar testes de paridade
+        ↓
+8. Documentar exemplo
+```
+
+Exemplo para OCR regional:
+
+```text
+RegionOCRRequest
+        ↓
+RegionOCRCapability
+        ↓
+DocumentEngine.ocr_region()
+        ↓
+Python SDK
+        ↓
+POST /v1/documents/{id}/regions:ocr
+        ↓
+CLI opcional
+        ↓
+Teste biblioteca versus API
+```
+
+---
+
+# 8. Regra para evitar duplicação
+
+A estrutura correta:
+
+```python
+class DocumentApplicationService:
+    async def inspect(self, request):
+        return await self.engine.inspect(request)
+
+    async def parse(self, request):
+        return await self.engine.parse(request)
+
+    async def process(self, request):
+        return await self.engine.process(request)
+```
+
+Biblioteca:
+
+```python
+class DocumentEngineClient:
+    async def process(self, request):
+        return await self.application.process(request)
+```
+
+API:
+
+```python
+@router.post("/v1/extractions")
+async def create_extraction(request):
+    return await application.process(request)
+```
+
+Estrutura incorreta:
+
+```text
+PDF extraction inside SDK
+PDF extraction inside FastAPI endpoint
+PDF extraction inside worker
+```
+
+Nenhuma capability deve ser reimplementada por canal de consumo.
+
+---
+
+# 9. Contratos locais e remotos equivalentes
+
+A biblioteca deve oferecer dois modos.
+
+## Engine local
+
+```python
+engine = DocumentEngine.local(
+    capabilities=[...]
+)
+```
+
+## Cliente remoto
+
+```python
+engine = DocumentEngine.remote(
+    base_url="https://...",
+    api_key="..."
+)
+```
+
+Uso equivalente:
+
+```python
+result = await engine.process(request)
+```
+
+Isso permite que um projeto comece com a biblioteca embarcada e futuramente migre para a API distribuída com poucas alterações.
+
+---
+
+# 10. Prioridade técnica revisada
+
+```text
+1. Contratos públicos
+2. Biblioteca e API mínimas
+3. Runtime local
+4. Extração nativa de PDF
+5. Extração nativa de Excel
+6. Modelo canônico e evidências
+7. Estrutura documental
+8. Schemas e templates
+9. Normalização e validação
+10. Inspector e Router
+11. OCR seletivo
+12. Confiança e reconciliação
+13. Persistência de produção
+14. Temporal e workers
+15. Interfaces visuais
+```
+
+---
+
+# 11. Regra arquitetural final
+
+```text
+Toda funcionalidade nasce reutilizável.
+
+Toda capability é implementada uma única vez.
+
+A biblioteca chama a camada de aplicação.
+
+A API chama a mesma camada de aplicação.
+
+A CLI chama a mesma camada de aplicação.
+
+O worker executa a mesma capability.
+
+A biblioteca local usa LocalRuntime.
+
+A plataforma remota pode usar TemporalRuntime.
+
+O contrato público permanece equivalente.
+
+A infraestrutura evolui sem reescrever o motor.
+```
+
+A meta não deve ser apenas:
+
+```text
+criar uma biblioteca
+e depois criar uma API
+```
+
+A meta correta é:
+
+```text
+criar um motor com contratos públicos estáveis
+e disponibilizá-lo continuamente
+como biblioteca e como API.
+```

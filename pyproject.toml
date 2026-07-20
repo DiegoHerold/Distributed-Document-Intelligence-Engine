@@ -1,0 +1,62 @@
+[project]
+name = "eixo-monorepo"
+version = "0.1.0"
+description = "Eixo - Distributed Document Intelligence Engine monorepo"
+requires-python = ">=3.12"
+readme = "README.md"
+
+[project.scripts]
+lint = "tools.eixo_dev:lint"
+format = "tools.eixo_dev:format_cmd"
+typecheck = "tools.eixo_dev:typecheck"
+test = "tools.eixo_dev:test"
+
+[dependency-groups]
+dev = [
+    "pytest>=9.0",
+]
+
+[tool.uv.workspace]
+members = [
+    "apps/api",
+    "apps/cli",
+    "packages/document-core",
+    "packages/document-model",
+    "packages/document-application",
+    "packages/document-engine",
+    "packages/document-sdk-python",
+    "packages/artifacts",
+    "packages/plugins",
+    "packages/runtime-local",
+]
+
+[tool.setuptools]
+packages = ["tools"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests", "apps/api/tests", "apps/cli/tests"]
+pythonpath = [
+    "packages/document-core/src",
+    "packages/document-model/src",
+    "packages/plugins/src",
+    "packages/artifacts/src",
+    "packages/document-application/src",
+    "packages/document-engine/src",
+    "packages/document-sdk-python/src",
+    "packages/runtime-local/src",
+    "apps/api/src",
+    "apps/cli/src",
+]
+
+[tool.eixo]
+python_min_version = "3.12"
+namespace = "eixo.*"
+architecture = "modules-before-microservices"
+
+[tool.coverage.run]
+branch = true
+source = ["apps", "packages"]
+
+[tool.coverage.report]
+show_missing = true
+skip_empty = true

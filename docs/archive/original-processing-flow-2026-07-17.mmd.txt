@@ -1,0 +1,440 @@
+flowchart TB
+
+    %% =====================================================
+    %% ENTRADAS E FORMAS DE CONSUMO
+    %% =====================================================
+
+    subgraph CONSUMO["Camada de Consumo"]
+        SDK_PY["Python SDK"]
+        SDK_TS["TypeScript SDK"]
+        REST["REST API"]
+        CLI["CLI"]
+        WEBHOOK["Webhooks"]
+        EMBEDDED["Uso como biblioteca embarcada"]
+    end
+
+    %% =====================================================
+    %% CONTROL PLANE
+    %% =====================================================
+
+    subgraph CONTROL["Control Plane"]
+        AUTH["Autenticação e autorização"]
+        TENANTS["Tenants e clientes"]
+        JOBS["Gerenciamento de jobs"]
+        DOCUMENTS["Catálogo de documentos"]
+        TEMPLATES["Templates versionados"]
+        SCHEMAS["Schemas de extração"]
+        POLICIES["Perfis e políticas"]
+        PROVIDERS["Providers e capacidades"]
+        REVIEW_ADMIN["Administração de revisões"]
+        VERSIONING["Controle de versões"]
+        USAGE["Uso, limites e custos"]
+        AUDIT["Auditoria"]
+    end
+
+    %% =====================================================
+    %% ENTRADA DO DOCUMENTO
+    %% =====================================================
+
+    SDK_PY --> REQUEST
+    SDK_TS --> REQUEST
+    REST --> REQUEST
+    CLI --> REQUEST
+    EMBEDDED --> REQUEST
+
+    REQUEST["Processing Request"]
+
+    REQUEST --> INGESTION
+
+    subgraph INGESTAO["Ingestão"]
+        INGESTION["Receber documento"]
+        MIME["Detectar MIME real"]
+        SECURITY["Validações de segurança"]
+        HASH["Calcular hash"]
+        STORE_ORIGINAL["Armazenar documento original"]
+        CREATE_JOB["Criar job"]
+    end
+
+    INGESTION --> MIME
+    MIME --> SECURITY
+    SECURITY --> HASH
+    HASH --> STORE_ORIGINAL
+    STORE_ORIGINAL --> CREATE_JOB
+
+    CREATE_JOB --> INSPECTOR
+
+    %% =====================================================
+    %% INSPEÇÃO
+    %% =====================================================
+
+    subgraph INSPECAO["Document Inspector"]
+        INSPECTOR["Inspecionar documento"]
+        DOC_SIGNALS["Coletar sinais do documento"]
+        PAGE_SIGNALS["Coletar sinais por página"]
+        FILE_PROFILE["Determinar perfil técnico"]
+        INSPECTION_ARTIFACT["Criar Inspection Artifact"]
+    end
+
+    INSPECTOR --> DOC_SIGNALS
+    DOC_SIGNALS --> PAGE_SIGNALS
+    PAGE_SIGNALS --> FILE_PROFILE
+    FILE_PROFILE --> INSPECTION_ARTIFACT
+
+    INSPECTION_ARTIFACT --> ROUTER
+
+    %% =====================================================
+    %% ROUTING E PLANEJAMENTO
+    %% =====================================================
+
+    subgraph PLANEJAMENTO["Roteamento e Planejamento"]
+        ROUTER["Processing Router"]
+        CAPABILITY_REGISTRY["Capability Registry"]
+        PROFILE["Perfil: fast, balanced, maximum_accuracy ou custom"]
+        POLICY["Políticas de processamento"]
+        CACHE_CHECK["Consultar artefatos em cache"]
+        PLANNER["Processing Planner"]
+        PLAN["Processing Plan versionado"]
+    end
+
+    ROUTER --> CAPABILITY_REGISTRY
+    PROFILE --> ROUTER
+    POLICY --> ROUTER
+    CACHE_CHECK --> ROUTER
+    ROUTER --> PLANNER
+    PLANNER --> PLAN
+
+    PLAN --> EXECUTION_RUNTIME
+
+    %% =====================================================
+    %% EXECUTION RUNTIME
+    %% =====================================================
+
+    subgraph RUNTIME["Execution Runtime"]
+        EXECUTION_RUNTIME{"Modo de execução"}
+        LOCAL_RUNTIME["Local Runtime"]
+        TEMPORAL_RUNTIME["Temporal Runtime"]
+    end
+
+    EXECUTION_RUNTIME -->|Biblioteca ou testes| LOCAL_RUNTIME
+    EXECUTION_RUNTIME -->|Plataforma distribuída| TEMPORAL_RUNTIME
+
+    LOCAL_RUNTIME --> PAGE_ROUTING
+    TEMPORAL_RUNTIME --> PAGE_ROUTING
+
+    %% =====================================================
+    %% PROCESSAMENTO ADAPTATIVO
+    %% =====================================================
+
+    subgraph PROCESSAMENTO["Processamento Adaptativo"]
+        PAGE_ROUTING{"Rota por página, região ou campo"}
+
+        NATIVE["Extração nativa"]
+        RENDER["Renderização"]
+        PREPROCESS["Pré-processamento de imagem"]
+        OCR["OCR seletivo ou completo"]
+        LAYOUT["Análise de layout"]
+        TABLE["Reconhecimento de tabelas"]
+        CLASSIFY["Classificação documental"]
+        SEMANTIC["Análise semântica"]
+    end
+
+    PAGE_ROUTING -->|Texto nativo suficiente| NATIVE
+    PAGE_ROUTING -->|Página ou região como imagem| RENDER
+    PAGE_ROUTING -->|Estrutura visual necessária| LAYOUT
+    PAGE_ROUTING -->|Tabela detectada| TABLE
+    PAGE_ROUTING -->|Documento desconhecido ou ambíguo| SEMANTIC
+
+    RENDER --> PREPROCESS
+    PREPROCESS --> OCR
+    OCR --> LAYOUT
+    OCR --> TABLE
+
+    NATIVE --> NATIVE_ARTIFACT
+    RENDER --> RENDER_ARTIFACT
+    PREPROCESS --> IMAGE_ARTIFACT
+    OCR --> OCR_ARTIFACT
+    LAYOUT --> LAYOUT_ARTIFACT
+    TABLE --> TABLE_ARTIFACT
+    SEMANTIC --> SEMANTIC_ARTIFACT
+
+    %% =====================================================
+    %% ARTEFATOS
+    %% =====================================================
+
+    subgraph ARTIFACTS["Artifact Store"]
+        ORIGINAL_ARTIFACT["Original Document Artifact"]
+        NATIVE_ARTIFACT["Native Parse Artifact"]
+        RENDER_ARTIFACT["Rendered Page ou Region Artifact"]
+        IMAGE_ARTIFACT["Preprocessed Image Artifact"]
+        OCR_ARTIFACT["OCR Artifact"]
+        LAYOUT_ARTIFACT["Layout Artifact"]
+        TABLE_ARTIFACT["Table Artifact"]
+        SEMANTIC_ARTIFACT["Semantic Artifact"]
+        CANONICAL_ARTIFACT["Canonical Document Artifact"]
+        EXTRACTION_ARTIFACT["Extraction Artifact"]
+        VALIDATION_ARTIFACT["Validation Artifact"]
+        REVIEW_ARTIFACT["Review Artifact"]
+    end
+
+    STORE_ORIGINAL --> ORIGINAL_ARTIFACT
+
+    NATIVE_ARTIFACT --> MERGE
+    OCR_ARTIFACT --> MERGE
+    LAYOUT_ARTIFACT --> MERGE
+    TABLE_ARTIFACT --> MERGE
+    SEMANTIC_ARTIFACT --> MERGE
+
+    %% =====================================================
+    %% MODELO DOCUMENTAL CANÔNICO
+    %% =====================================================
+
+    subgraph CANONICAL["Canonical Document Model"]
+        MERGE["Mesclar elementos e evidências"]
+        DOC_GRAPH["Construir Document Graph"]
+        ELEMENTS["Palavras, linhas, blocos, imagens e regiões"]
+        STRUCTURES["Tabelas, listas, seções e formulários"]
+        RELATIONSHIPS["Relações espaciais, lógicas e hierárquicas"]
+        PROVENANCE["Proveniência dos elementos"]
+    end
+
+    MERGE --> DOC_GRAPH
+    DOC_GRAPH --> ELEMENTS
+    DOC_GRAPH --> STRUCTURES
+    DOC_GRAPH --> RELATIONSHIPS
+    DOC_GRAPH --> PROVENANCE
+    DOC_GRAPH --> CANONICAL_ARTIFACT
+
+    CANONICAL_ARTIFACT --> CLASSIFICATION_STAGE
+
+    %% =====================================================
+    %% CLASSIFICAÇÃO E MATCHING
+    %% =====================================================
+
+    subgraph CLASSIFICATION["Classificação e Matching"]
+        CLASSIFICATION_STAGE["Executar classificação"]
+        TECH_CLASS["Classificação técnica"]
+        DOC_CLASS["Classificação documental"]
+        TEMPLATE_FILTER["Filtrar templates candidatos"]
+        TEMPLATE_SCORE["Calcular score de matching"]
+        TEMPLATE_DECISION{"Template encontrado com confiança suficiente?"}
+    end
+
+    CLASSIFICATION_STAGE --> TECH_CLASS
+    TECH_CLASS --> DOC_CLASS
+    DOC_CLASS --> TEMPLATE_FILTER
+    TEMPLATE_FILTER --> TEMPLATE_SCORE
+    TEMPLATE_SCORE --> TEMPLATE_DECISION
+
+    TEMPLATE_DECISION -->|Sim| TEMPLATE_ENGINE
+    TEMPLATE_DECISION -->|Não| SCHEMA_ENGINE
+    TEMPLATE_DECISION -->|Ambíguo| SEMANTIC_TEMPLATE
+
+    %% =====================================================
+    %% EXTRAÇÃO
+    %% =====================================================
+
+    subgraph EXTRACTION["Extração Estruturada"]
+        TEMPLATE_ENGINE["Template Engine"]
+        SCHEMA_ENGINE["Schema Extraction Engine"]
+        SEMANTIC_TEMPLATE["Extração semântica seletiva"]
+        FIELD_CANDIDATES["Gerar candidatos de campos"]
+        TABLE_EXTRACTION["Extrair tabelas, listas e objetos"]
+        EVIDENCE_BINDING["Vincular evidências"]
+    end
+
+    TEMPLATE_ENGINE --> FIELD_CANDIDATES
+    SCHEMA_ENGINE --> FIELD_CANDIDATES
+    SEMANTIC_TEMPLATE --> FIELD_CANDIDATES
+
+    FIELD_CANDIDATES --> TABLE_EXTRACTION
+    TABLE_EXTRACTION --> EVIDENCE_BINDING
+    EVIDENCE_BINDING --> EXTRACTION_ARTIFACT
+
+    EXTRACTION_ARTIFACT --> NORMALIZATION
+
+    %% =====================================================
+    %% NORMALIZAÇÃO E VALIDAÇÃO
+    %% =====================================================
+
+    subgraph QUALITY["Normalização, Validação e Confiança"]
+        NORMALIZATION["Normalization Engine"]
+        TYPE_VALIDATION["Validação de tipo e formato"]
+        DOMAIN_VALIDATION["Validação de domínio"]
+        MATH_VALIDATION["Validação matemática e consistência"]
+        CROSS_VALIDATION["Validação cruzada"]
+        CONFIDENCE["Confidence Engine"]
+        RESULT_EVALUATION{"Confiança e consistência suficientes?"}
+    end
+
+    NORMALIZATION --> TYPE_VALIDATION
+    TYPE_VALIDATION --> DOMAIN_VALIDATION
+    DOMAIN_VALIDATION --> MATH_VALIDATION
+    MATH_VALIDATION --> CROSS_VALIDATION
+    CROSS_VALIDATION --> CONFIDENCE
+    CONFIDENCE --> RESULT_EVALUATION
+
+    CROSS_VALIDATION --> VALIDATION_ARTIFACT
+
+    %% =====================================================
+    %% ESCALONAMENTO
+    %% =====================================================
+
+    RESULT_EVALUATION -->|Sim| FINAL_RESULT
+    RESULT_EVALUATION -->|Campo ausente ou baixa confiança| ESCALATE
+    RESULT_EVALUATION -->|Conflito entre métodos| RECONCILIATION
+    RESULT_EVALUATION -->|Ambiguidade persistente| HUMAN_REVIEW
+
+    subgraph ESCALATION["Escalonamento Progressivo"]
+        ESCALATE["Identificar região problemática"]
+        REPLAN["Atualizar Processing Plan"]
+        REGIONAL_PROCESS["Reprocessar apenas página, região ou campo"]
+        STRONGER_CAPABILITY["Selecionar capacidade mais robusta"]
+    end
+
+    ESCALATE --> REPLAN
+    REPLAN --> STRONGER_CAPABILITY
+    STRONGER_CAPABILITY --> REGIONAL_PROCESS
+    REGIONAL_PROCESS --> PAGE_ROUTING
+
+    %% =====================================================
+    %% RECONCILIAÇÃO
+    %% =====================================================
+
+    subgraph RECONCILIATION_STAGE["Reconciliação"]
+        RECONCILIATION["Reconciliation Engine"]
+        COMPARE["Comparar parser, OCR, template e IA"]
+        CHECK_EVIDENCE["Comparar evidências"]
+        APPLY_RULES["Aplicar regras e validações"]
+        RECONCILIATION_DECISION{"Conflito resolvido?"}
+    end
+
+    RECONCILIATION --> COMPARE
+    COMPARE --> CHECK_EVIDENCE
+    CHECK_EVIDENCE --> APPLY_RULES
+    APPLY_RULES --> RECONCILIATION_DECISION
+
+    RECONCILIATION_DECISION -->|Sim| FINAL_RESULT
+    RECONCILIATION_DECISION -->|Não| HUMAN_REVIEW
+
+    %% =====================================================
+    %% REVISÃO HUMANA
+    %% =====================================================
+
+    subgraph REVIEW["Revisão Humana"]
+        HUMAN_REVIEW["Preparar revisão"]
+        REVIEW_PACKAGE["Documento, recorte, candidatos e evidências"]
+        REVIEW_UI["Review UI"]
+        HUMAN_DECISION{"Decisão humana"}
+        CORRECTION["Correção estruturada"]
+        REJECT["Rejeitar ou marcar como ausente"]
+    end
+
+    HUMAN_REVIEW --> REVIEW_PACKAGE
+    REVIEW_PACKAGE --> REVIEW_ARTIFACT
+    REVIEW_ARTIFACT --> REVIEW_UI
+    REVIEW_UI --> HUMAN_DECISION
+
+    HUMAN_DECISION -->|Corrigir| CORRECTION
+    HUMAN_DECISION -->|Rejeitar| REJECT
+
+    CORRECTION --> FINAL_RESULT
+    REJECT --> FINAL_RESULT
+
+    %% =====================================================
+    %% RESULTADO FINAL
+    %% =====================================================
+
+    subgraph RESULT["Resultado Final"]
+        FINAL_RESULT["Construir Processing Result"]
+        RESULT_DATA["Dados estruturados"]
+        RESULT_FIELDS["Campos, tabelas, listas e objetos"]
+        RESULT_EVIDENCE["Evidências e proveniência"]
+        RESULT_CONFIDENCE["Confiança detalhada"]
+        RESULT_PROCESSING["Histórico de processamento"]
+        RESULT_VERSIONS["Versões de engine, plano, template e providers"]
+        RESULT_STATUS["completed ou review_required"]
+        PERSIST_RESULT["Persistir resultado"]
+    end
+
+    FINAL_RESULT --> RESULT_DATA
+    FINAL_RESULT --> RESULT_FIELDS
+    FINAL_RESULT --> RESULT_EVIDENCE
+    FINAL_RESULT --> RESULT_CONFIDENCE
+    FINAL_RESULT --> RESULT_PROCESSING
+    FINAL_RESULT --> RESULT_VERSIONS
+    FINAL_RESULT --> RESULT_STATUS
+
+    RESULT_DATA --> PERSIST_RESULT
+    RESULT_FIELDS --> PERSIST_RESULT
+    RESULT_EVIDENCE --> PERSIST_RESULT
+    RESULT_CONFIDENCE --> PERSIST_RESULT
+    RESULT_PROCESSING --> PERSIST_RESULT
+    RESULT_VERSIONS --> PERSIST_RESULT
+    RESULT_STATUS --> PERSIST_RESULT
+
+    PERSIST_RESULT --> RESPONSE
+
+    RESPONSE["API, SDK, CLI ou Webhook"]
+
+    RESPONSE --> SDK_PY
+    RESPONSE --> SDK_TS
+    RESPONSE --> REST
+    RESPONSE --> CLI
+    RESPONSE --> WEBHOOK
+
+    %% =====================================================
+    %% WORKERS
+    %% =====================================================
+
+    subgraph WORKERS["Workers físicos iniciais"]
+        CPU_WORKER["CPU Worker<br/>Inspector, Parser, Render, Template, Normalização e Validação"]
+        GPU_WORKER["GPU Worker<br/>OCR, Layout e Tabelas"]
+        SEMANTIC_WORKER["Semantic Worker<br/>LLM, VLM e Reconciliação"]
+    end
+
+    TEMPORAL_RUNTIME -. tarefas CPU .-> CPU_WORKER
+    TEMPORAL_RUNTIME -. tarefas GPU .-> GPU_WORKER
+    TEMPORAL_RUNTIME -. tarefas semânticas .-> SEMANTIC_WORKER
+
+    CPU_WORKER -. executa .-> INSPECTOR
+    CPU_WORKER -. executa .-> NATIVE
+    CPU_WORKER -. executa .-> RENDER
+    CPU_WORKER -. executa .-> TEMPLATE_ENGINE
+    CPU_WORKER -. executa .-> NORMALIZATION
+
+    GPU_WORKER -. executa .-> OCR
+    GPU_WORKER -. executa .-> LAYOUT
+    GPU_WORKER -. executa .-> TABLE
+
+    SEMANTIC_WORKER -. executa .-> SEMANTIC
+    SEMANTIC_WORKER -. executa .-> SEMANTIC_TEMPLATE
+    SEMANTIC_WORKER -. executa .-> RECONCILIATION
+
+    %% =====================================================
+    %% INFRAESTRUTURA
+    %% =====================================================
+
+    subgraph INFRA["Infraestrutura"]
+        POSTGRES["PostgreSQL<br/>jobs, templates, schemas, resultados e auditoria"]
+        OBJECT_STORAGE["MinIO ou S3<br/>documentos e artefatos"]
+        REDIS["Redis opcional<br/>cache, locks e rate limiting"]
+        TEMPORAL["Temporal<br/>workflows e task queues"]
+        OBSERVABILITY["Logs, métricas e tracing"]
+        EVENT_BUS["Event Bus opcional"]
+    end
+
+    CONTROL --> POSTGRES
+    ARTIFACTS --> OBJECT_STORAGE
+    CACHE_CHECK --> REDIS
+    TEMPORAL_RUNTIME --> TEMPORAL
+
+    CREATE_JOB -. eventos .-> OBSERVABILITY
+    PLAN -. eventos .-> OBSERVABILITY
+    PAGE_ROUTING -. eventos .-> OBSERVABILITY
+    FINAL_RESULT -. eventos .-> OBSERVABILITY
+
+    PERSIST_RESULT --> POSTGRES
+    PERSIST_RESULT --> OBJECT_STORAGE
+
+    OBSERVABILITY -. integração externa .-> EVENT_BUS
+    WEBHOOK -. recebe eventos .- EVENT_BUS

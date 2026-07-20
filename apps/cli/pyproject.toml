@@ -1,0 +1,22 @@
+[project]
+name = "eixo-cli"
+version = "0.1.0"
+description = "Initial command line interface for Eixo."
+requires-python = ">=3.12"
+dependencies = [
+    "eixo-document-sdk-python",
+    "eixo-document-core",
+    "eixo-document-application",
+    "eixo-document-engine",
+]
+
+[project.scripts]
+eixo = "eixo_cli.main:main"
+
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["eixo_cli*"]
