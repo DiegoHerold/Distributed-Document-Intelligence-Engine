@@ -40,6 +40,8 @@ Pertence ao Kernel v0:
 - `DocumentSource`;
 - `LocalPathSource`, `BytesSource`, `StreamSource` e `ArtifactReferenceSource`;
 - `DetectedDocumentFormat`, `ContentHash`, `ContentMetadata` e `DocumentIdentity`;
+- `ArtifactReference`, `ArtifactMetadata`, `ArtifactWriteRequest` e `ArtifactType`;
+- `DocumentRecord`, `DocumentStateTransition` e `DocumentIngestionResult`;
 - `InspectionRequest` e `InspectionResult`;
 - `ParseRequest` e `ParseResult`;
 - `ProcessingRequest` e `ProcessingResult`;
@@ -135,6 +137,8 @@ receber contrato
   -> resolver fonte
   -> detectar formato real
   -> calcular hash e identidade de conteudo
+  -> armazenar original como artefato local
+  -> registrar DocumentRecord com status stored
   -> criar ExecutionContext
   -> resolver capability por contrato, MIME canonico e formato detectado
   -> criar ExecutionTask
@@ -273,6 +277,21 @@ Regras principais:
 - deteccao nao confia apenas em extensao ou MIME declarado;
 - SHA-256 e calculado sobre bytes reais em chunks;
 - `DocumentId` nao e igual ao hash e continua reservado para persistencia futura.
+
+## Storage Local E Ciclo De Vida
+
+As fases 2.5 e 2.6 adicionam `LocalArtifactStore`,
+`LocalDocumentRepository`, `DocumentLifecycle` e `IngestDocument`. A
+documentacao detalhada esta em
+[local-storage-and-document-lifecycle.md](local-storage-and-document-lifecycle.md).
+
+Regras principais:
+
+- o original e armazenado como artefato imutavel;
+- bytes podem ser deduplicados por hash sem fundir documentos logicos;
+- `ArtifactReference` nao expoe caminho absoluto;
+- transicoes de estado sao explicitas e persistidas;
+- lifecycle documental e lifecycle de job permanecem separados.
 
 ## Diagnostico Do Estado Atual
 

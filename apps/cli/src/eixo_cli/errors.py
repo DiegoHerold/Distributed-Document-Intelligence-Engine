@@ -6,6 +6,10 @@ from typing import Protocol
 from eixo import (
     CapabilityNotFoundError,
     ConfigurationError,
+    ArtifactNotFoundError,
+    ArtifactStorageError,
+    DocumentNotFoundError,
+    DocumentVersionConflictError,
     EixoError,
     ExecutionCancelledError,
     ExecutionTimeoutError,
@@ -44,12 +48,18 @@ def exit_code_for_error(error: BaseException) -> ExitCode:
         return ExitCode.CAPABILITY_UNAVAILABLE
     if isinstance(error, JobNotFoundError):
         return ExitCode.JOB_NOT_FOUND
+    if isinstance(error, (ArtifactNotFoundError, DocumentNotFoundError)):
+        return ExitCode.SOURCE_NOT_FOUND
+    if isinstance(error, DocumentVersionConflictError):
+        return ExitCode.PROCESSING_FAILED
     if isinstance(error, ExecutionTimeoutError):
         return ExitCode.TIMEOUT
     if isinstance(error, ExecutionCancelledError):
         return ExitCode.PROCESSING_CANCELLED
     if isinstance(error, ConfigurationError):
         return ExitCode.CONFIGURATION_ERROR
+    if isinstance(error, ArtifactStorageError):
+        return ExitCode.PROCESSING_FAILED
     if isinstance(error, ValidationError):
         return ExitCode.VALIDATION_ERROR
     if isinstance(error, InvalidStateTransitionError):
@@ -74,6 +84,12 @@ def user_message_for_error(error: BaseException) -> str:
         return "Erro: capability necessaria nao encontrada."
     if isinstance(error, JobNotFoundError):
         return "Erro: job nao encontrado."
+    if isinstance(error, ArtifactNotFoundError):
+        return "Erro: artefato nao encontrado."
+    if isinstance(error, DocumentNotFoundError):
+        return "Erro: documento nao encontrado."
+    if isinstance(error, DocumentVersionConflictError):
+        return "Erro: conflito de versao do documento."
     if isinstance(error, UnsupportedFormatError):
         return "Erro: formato nao suportado."
     if isinstance(error, ExecutionTimeoutError):
@@ -82,6 +98,8 @@ def user_message_for_error(error: BaseException) -> str:
         return "Erro: processamento cancelado."
     if isinstance(error, ConfigurationError):
         return "Erro: configuracao invalida."
+    if isinstance(error, ArtifactStorageError):
+        return "Erro: falha ao armazenar artefato."
     if isinstance(error, ValidationError):
         return f"Erro: {error.message}"
     if isinstance(error, InvalidStateTransitionError):

@@ -21,7 +21,10 @@ class ApiState:
 
     def require_engine(self) -> DocumentEngine:
         if self.engine is None:
-            self.engine = DocumentEngine.local(default_timeout=self.config.request_timeout)
+            self.engine = DocumentEngine.local(
+                default_timeout=self.config.request_timeout,
+                data_directory=self.config.local_data_dir,
+            )
         return self.engine
 
     def readiness_checks(self) -> dict[str, str]:

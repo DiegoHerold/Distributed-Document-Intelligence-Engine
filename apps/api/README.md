@@ -37,7 +37,7 @@ http://localhost:8000/docs
 - CORS restritivo e desabilitado por padrao;
 - `max_upload_size`;
 - `request_timeout`;
-- diretorio local de dados reservado para evolucao.
+- `local_data_dir`, usado pelo storage local de artefatos e documentos.
 
 PostgreSQL, Redis, MinIO, Temporal, API keys, tenants obrigatorios e rate
 limiting distribuido nao fazem parte desta fase.
@@ -77,6 +77,7 @@ nao tipos HTTP.
 
 Jobs e resultados ficam em memoria dentro do engine local. Eles sao adequados
 para desenvolvimento e testes, mas sao perdidos ao reiniciar o processo.
+Documentos e artefatos originais ficam no `local_data_dir` configurado.
 
 ## Erros
 
@@ -88,6 +89,8 @@ Mapeamentos principais:
 - `CapabilityNotFoundError`: 422
 - `UnsupportedFormatError`: 415
 - `UploadTooLargeError`: 413
+- `ArtifactNotFoundError`: 404
+- `DocumentVersionConflictError`: 409
 - `JobNotFoundError`: 404
 - `InvalidStateTransitionError`: 409
 - `ExecutionTimeoutError`: 504

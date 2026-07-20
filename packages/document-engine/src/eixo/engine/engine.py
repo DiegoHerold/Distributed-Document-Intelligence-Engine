@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import logging
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from pathlib import Path
 from typing import BinaryIO
 
@@ -10,6 +10,7 @@ from eixo.application import (
     CapabilityBackedDocumentService,
     GetJobResult,
     GetJobStatus,
+    IngestDocument,
     InMemoryJobService,
     InspectDocument,
     ParseDocument,
@@ -19,6 +20,7 @@ from eixo.application import (
 from eixo.core import (
     ConfigurationError,
     DocumentSource,
+    DocumentIngestionResult,
     InspectionRequest,
     InspectionResult,
     InvalidStateTransitionError,
@@ -64,16 +66,27 @@ class DocumentEngine:
         registry: CapabilityRegistry | None = None,
         providers: tuple[ProviderDescriptor, ...] = (),
         capabilities: tuple[Capability[object, object], ...] = (),
+        data_directory: str | Path | None = None,
         max_concurrent_tasks: int | None = None,
         default_timeout: float | None = None,
     ) -> "DocumentEngine":
-        engine_config = config or LocalEngineConfig(
-            runtime=runtime_config
-            or LocalRuntimeConfig(
-                max_concurrent_tasks=max_concurrent_tasks or 8,
-                default_timeout=default_timeout if default_timeout is not None else 30.0,
+        if config is not None:
+            engine_config = (
+                replace(config, data_directory=Path(data_directory))
+                if data_directory is not None
+                else config
             )
-        )
+        else:
+            engine_config = LocalEngineConfig(
+                runtime=runtime_config
+                or LocalRuntimeConfig(
+                    max_concurrent_tasks=max_concurrent_tasks or 8,
+                    default_timeout=default_timeout if default_timeout is not None else 30.0,
+                ),
+                data_directory=(
+                    Path(data_directory) if data_directory is not None else Path(".eixo/local")
+                ),
+            )
         if runtime is None:
             runtime = LocalRuntime(config=engine_config.runtime)
         registry = registry or CapabilityRegistry()
@@ -81,7 +94,12 @@ class DocumentEngine:
             registry.register_provider(provider)
         for capability in capabilities:
             registry.register(capability)
-        service = CapabilityBackedDocumentService(registry=registry, runtime=runtime)
+        ingest_document = IngestDocument.local(engine_config.data_directory)
+        service = CapabilityBackedDocumentService(
+            registry=registry,
+            runtime=runtime,
+            ingest_document=ingest_document,
+        )
         jobs = InMemoryJobService(processing_service=service, runtime=runtime)
         return cls(
             registry=registry,
@@ -217,6 +235,18 @@ class DocumentEngine:
         await self._ensure_running()
         assert self.submit_processing_job is not None
         return await self.submit_processing_job.execute(request)
+
+    async def ingest(
+        self,
+        source: DocumentInput,
+    ) -> DocumentIngestionResult:
+        await self._ensure_running()
+        self._ensure_composed()
+        assert self.process_document is not None
+        service = self.process_document.service
+        if not isinstance(service, CapabilityBackedDocumentService):
+            raise ConfigurationError("Document ingestion is not available")
+        return await service.ingest_document.execute(self._source_from_input(source))
 
     async def get_job_status(self, job_id: JobId | str) -> JobResult:
         await self._ensure_running()

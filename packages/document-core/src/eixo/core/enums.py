@@ -10,11 +10,18 @@ class JobStatus(StrEnum):
     COMPLETED = "completed"
     REVIEW_REQUIRED = "review_required"
     FAILED = "failed"
+    CANCEL_REQUESTED = "cancel_requested"
     CANCELLED = "cancelled"
 
 
 class DocumentStatus(StrEnum):
     RECEIVED = "received"
+    VALIDATED = "validated"
+    STORED = "stored"
+    PROCESSING = "processing"
+    COMPLETED = "completed"
+    REVIEW_REQUIRED = "review_required"
+    CANCELLED = "cancelled"
     INSPECTED = "inspected"
     PARSED = "parsed"
     PROCESSED = "processed"

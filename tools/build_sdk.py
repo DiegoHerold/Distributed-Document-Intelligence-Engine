@@ -11,6 +11,8 @@ ROOT = Path(__file__).resolve().parents[1]
 DIST = ROOT / "dist" / "sdk"
 PACKAGE_DIRS = [
     ROOT / "packages/document-core",
+    ROOT / "packages/document-model",
+    ROOT / "packages/artifacts",
     ROOT / "packages/plugins",
     ROOT / "packages/runtime-local",
     ROOT / "packages/document-application",

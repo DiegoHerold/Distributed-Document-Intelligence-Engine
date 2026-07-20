@@ -54,8 +54,8 @@ API, biblioteca, workers e CLI nunca devem reimplementar a mesma logica.
 
 ## Proxima fase recomendada
 
-Com as fases 2.1 a 2.4 concluidas, a proxima etapa natural e a Fase 2.5:
-criar o `LocalArtifactStore` sem antecipar persistencia distribuida.
+Com as fases 2.5 e 2.6 concluidas, a proxima etapa natural e a Fase 2.7:
+evoluir jobs locais persistentes sem misturar `DocumentStatus` e `JobStatus`.
 
 ## Indice detalhado
 

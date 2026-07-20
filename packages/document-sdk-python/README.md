@@ -25,11 +25,15 @@ async with DocumentEngine.local() as engine:
 `await engine.inspect("document.pdf")`, and converts them to typed
 `DocumentSource` contracts internally.
 
+Use `await engine.ingest(source)` to store the original locally and create a
+`DocumentRecord` with status `stored` before any parsing capability exists.
+
 Without a registered capability, methods raise `CapabilityNotFoundError`. Real PDF, Excel, OCR, layout and semantic capabilities are not implemented yet.
 
 ## Typing
 
-The package includes `py.typed` and reexports typed contracts from the core packages.
+The package includes `py.typed` and reexports typed contracts from the core packages,
+including artifact references and document lifecycle models.
 
 ## Errors
 

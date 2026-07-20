@@ -9,4 +9,5 @@ htmlcov/
 dist/
 build/
 *.egg-info/
-
+.data/
+.eixo/

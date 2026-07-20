@@ -69,6 +69,51 @@ class SourceNotReadableError(SourceResolutionError):
     code = "source.not_readable"
 
 
+class ArtifactError(EixoError):
+    code = "artifact.error"
+    category = ErrorCategory.EXECUTION
+
+
+class ArtifactNotFoundError(ArtifactError):
+    code = "artifact.not_found"
+    category = ErrorCategory.NOT_FOUND
+
+
+class ArtifactMetadataMissingError(ArtifactError):
+    code = "artifact.metadata_missing"
+
+
+class ArtifactCorruptedError(ArtifactError):
+    code = "artifact.corrupted"
+
+
+class ArtifactHashMismatchError(ArtifactCorruptedError):
+    code = "artifact.hash_mismatch"
+
+
+class ArtifactSizeMismatchError(ArtifactCorruptedError):
+    code = "artifact.size_mismatch"
+
+
+class ArtifactStorageError(ArtifactError):
+    code = "artifact.storage_failure"
+    retryable = True
+
+
+class DocumentRepositoryError(EixoError):
+    code = "document.repository_error"
+    category = ErrorCategory.EXECUTION
+
+
+class DocumentNotFoundError(DocumentRepositoryError):
+    code = "document.not_found"
+    category = ErrorCategory.NOT_FOUND
+
+
+class DocumentVersionConflictError(DocumentRepositoryError):
+    code = "document.version_conflict"
+
+
 class ConfigurationError(EixoError):
     code = "configuration.error"
     category = ErrorCategory.CONFIGURATION

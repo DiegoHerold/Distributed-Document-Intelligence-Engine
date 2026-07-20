@@ -8,15 +8,16 @@ Este diretorio organiza o contexto, a arquitetura, as decisoes, o roadmap e os d
 2. [Arquitetura](architecture/overview.md)
 3. [Kernel v0](architecture/kernel-v0.md)
 4. [Ingestao e identidade de conteudo](architecture/ingestion-and-content-identity.md)
-5. [Roadmap](roadmap/README.md)
-6. [Indice oficial de fases](roadmap/phases/README.md)
-7. [Decisoes arquiteturais](decisions/README.md)
-8. [Guia para agentes](../AGENTS.md)
-9. [Uso como biblioteca Python](guides/using-as-library.md)
-10. [Uso da API REST](guides/using-the-api.md)
-11. [Uso da CLI](guides/cli.md)
-12. [Testes de paridade](testing/parity-tests.md)
-13. [Arquivo historico](archive/README.md), quando for necessario auditar a origem das decisoes
+5. [Storage local e ciclo de vida documental](architecture/local-storage-and-document-lifecycle.md)
+6. [Roadmap](roadmap/README.md)
+7. [Indice oficial de fases](roadmap/phases/README.md)
+8. [Decisoes arquiteturais](decisions/README.md)
+9. [Guia para agentes](../AGENTS.md)
+10. [Uso como biblioteca Python](guides/using-as-library.md)
+11. [Uso da API REST](guides/using-the-api.md)
+12. [Uso da CLI](guides/cli.md)
+13. [Testes de paridade](testing/parity-tests.md)
+14. [Arquivo historico](archive/README.md), quando for necessario auditar a origem das decisoes
 
 ## Estrutura
 

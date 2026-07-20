@@ -28,6 +28,9 @@ Sources descrevem a origem e nao abrem arquivos durante a construcao.
 
 O fluxo compartilhado resolve a origem, detecta formato real e calcula
 identidade de conteudo antes de executar a capability compativel.
+Depois das fases 2.5 e 2.6, o mesmo fluxo armazena o original como
+`ArtifactReference` e registra um `DocumentRecord` local com status `stored`.
+Contratos publicos nao expõem caminhos absolutos do storage local.
 
 ## Limitacoes atuais
 

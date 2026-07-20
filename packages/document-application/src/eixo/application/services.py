@@ -2,8 +2,10 @@ from __future__ import annotations
 
 import asyncio
 from dataclasses import dataclass, field, replace
+from pathlib import Path
 from pathlib import PurePath
 
+from eixo.application.document_ingestion import IngestDocument
 from eixo.application.ingestion import (
     ContentIdentityService,
     LocalSourceResolver,
@@ -30,6 +32,7 @@ from eixo.core import (
     ProcessingResult,
     ProcessingStatus,
     DetectedDocumentFormat,
+    DocumentIngestionResult,
     DocumentFormat,
     IdentifiedDocumentContent,
     UnsupportedFormatError,
@@ -63,6 +66,9 @@ class CapabilityBackedDocumentService:
     runtime: ExecutionRuntime
     source_resolver: SourceResolver = field(default_factory=LocalSourceResolver)
     content_identifier: ContentIdentityService = field(default_factory=ContentIdentityService)
+    ingest_document: IngestDocument = field(
+        default_factory=lambda: IngestDocument.local(Path(".eixo/local"))
+    )
 
     async def inspect(self, request: InspectionRequest) -> InspectionResult:
         return await self._execute(
@@ -92,25 +98,21 @@ class CapabilityBackedDocumentService:
         input_contract: str,
         output_contract: str,
     ):
-        async with self.source_resolver.resolve(request.source) as resolved:
-            identified = await self.content_identifier.identify(resolved)
-            request = request_with_identified_source(request, identified)
-            detected_format = document_format_from_detection(identified.identity.detected_format)
-            media_type = (
-                identified.identity.detected_format.canonical_mime
-                or request.source.declared_media_type
-            )
-            capability = self.registry.resolve(
-                document_format=detected_format or document_format_from_request(request),
-                media_type=media_type,
-                input_contract=input_contract,
-                output_contract=output_contract,
-            )
-            result = await self.runtime.execute_capability(
-                capability,
-                request,
-                context=context_from_request(request),
-            )
+        ingestion = await self.ingest_document.execute(request.source)
+        request = request_with_ingestion_result(request, ingestion)
+        detected_format = document_format_from_detection(ingestion.detected_format)
+        media_type = ingestion.detected_format.canonical_mime or request.source.declared_media_type
+        capability = self.registry.resolve(
+            document_format=detected_format or document_format_from_request(request),
+            media_type=media_type,
+            input_contract=input_contract,
+            output_contract=output_contract,
+        )
+        result = await self.runtime.execute_capability(
+            capability,
+            request,
+            context=context_from_request(request),
+        )
         if result.status != ExecutionStatus.COMPLETED:
             if result.error is not None:
                 if result.error.code == ExecutionTimeoutError.code:
@@ -217,6 +219,13 @@ class InMemoryJobService:
         async with self._lock:
             if job_id in self._results:
                 return self._results[job_id]
+            handle = self._handles.get(job_id)
+        if handle is not None and handle.status == ExecutionStatus.COMPLETED:
+            result = await handle.wait()
+            if result.status == ExecutionStatus.COMPLETED and result.value is not None:
+                async with self._lock:
+                    self._results.setdefault(job_id, result.value)
+                return result.value
         raise InvalidStateTransitionError("Job result is not available yet")
 
     async def cancel(self, job_id: JobId) -> JobResult:
@@ -322,10 +331,28 @@ def request_with_identified_source(
     return replace(request, source=source)
 
 
+def request_with_ingestion_result(
+    request: InspectionRequest | ParseRequest | ProcessingRequest,
+    ingestion: DocumentIngestionResult,
+) -> InspectionRequest | ParseRequest | ProcessingRequest:
+    metadata = dict(request.source.metadata)
+    metadata.update(
+        {
+            "document_id": str(ingestion.document_id),
+            "artifact_id": str(ingestion.original_artifact.artifact_id),
+            "content_hash": ingestion.identity.content_hash.canonical_value,
+            "detected_format": ingestion.detected_format.format.value,
+        }
+    )
+    source = replace(request.source, size=ingestion.size_bytes, metadata=metadata)
+    return replace(request, source=source)
+
+
 __all__ = [
     "CapabilityBackedDocumentService",
     "InMemoryJobService",
     "context_from_request",
     "document_format_from_detection",
     "request_with_identified_source",
+    "request_with_ingestion_result",
 ]

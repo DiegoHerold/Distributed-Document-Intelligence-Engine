@@ -156,7 +156,20 @@ class ArtifactReference(Serializable):
     artifact_id: ArtifactId
     kind: str
     media_type: str | None = None
+    storage_backend: str | None = None
+    storage_key: str | None = None
+    content_hash: str | None = None
+    size_bytes: int | None = None
+    original_filename: str | None = None
+    created_at: str | None = None
+    version: int = 1
     metadata: dict[str, str] = field(default_factory=dict)
+
+    def __post_init__(self) -> None:
+        if self.size_bytes is not None and self.size_bytes < 0:
+            raise ValueError("size_bytes cannot be negative")
+        if self.version <= 0:
+            raise ValueError("version must be positive")
 
 
 @dataclass(frozen=True, slots=True)

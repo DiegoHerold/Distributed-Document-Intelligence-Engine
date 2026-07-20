@@ -1,3 +1,9 @@
+from eixo.application.document_ingestion import IngestDocument
+from eixo.application.document_lifecycle import (
+    DocumentLifecycle,
+    DocumentRepository,
+    LocalDocumentRepository,
+)
 from eixo.application.ingestion import (
     ContentHasher,
     ContentIdentityService,
@@ -34,15 +40,19 @@ __all__ = [
     "ContentHasher",
     "ContentIdentityService",
     "DocumentFormatDetector",
+    "DocumentLifecycle",
+    "DocumentRepository",
     "GetJobResult",
     "GetJobStatus",
     "GetJobStatus",
     "InspectDocument",
     "InspectionService",
+    "IngestDocument",
     "InMemoryJobService",
     "JobExecutor",
     "JobRepository",
     "LocalSourceResolver",
+    "LocalDocumentRepository",
     "MagicBytesDocumentFormatDetector",
     "ParseDocument",
     "ParsingService",

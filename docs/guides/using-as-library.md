@@ -44,6 +44,7 @@ async with DocumentEngine.local() as engine:
 from eixo import DocumentEngine, LocalEngineConfig, LocalRuntimeConfig
 
 engine = DocumentEngine.local(
+    data_directory=".eixo/local",
     config=LocalEngineConfig(
         runtime=LocalRuntimeConfig(
             max_concurrent_tasks=4,
@@ -59,6 +60,7 @@ engine = DocumentEngine.local(
 
 Opcoes publicas atuais:
 
+- `data_directory`;
 - `max_concurrent_tasks`;
 - `max_thread_workers`;
 - `max_process_workers`;
@@ -91,6 +93,19 @@ await engine.inspect(b"%PDF-1.7\n")
 Internamente, essas entradas sao convertidas para `DocumentSource`, resolvidas
 pelo `SourceResolver`, identificadas por formato real e hash SHA-256, e so entao
 encaminhadas para a capability compativel.
+
+## Ingestao local
+
+```python
+result = await engine.ingest("documento.pdf")
+
+print(result.document_id)
+print(result.status)  # stored
+print(result.original_artifact.storage_key)
+```
+
+`storage_key` e uma referencia relativa e opaca. O caminho absoluto do arquivo
+armazenado permanece dentro do `LocalArtifactStore`.
 
 ## Operacoes
 

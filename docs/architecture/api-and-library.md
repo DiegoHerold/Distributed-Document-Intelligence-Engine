@@ -69,6 +69,8 @@ Uploads `multipart/form-data` sao convertidos para `BytesSource`. Objetos HTTP,
 como arquivos do framework, nao entram no nucleo. O adapter multipart inicial
 materializa o arquivo em memoria apos validar limite de tamanho; resolucao,
 deteccao de formato e hashing pertencem ao fluxo compartilhado do engine.
+Antes de executar capabilities, o engine tambem armazena o original via
+`IngestDocument`, `LocalArtifactStore` e `LocalDocumentRepository`.
 
 Erros de dominio sao convertidos para `ErrorResult` com correlation ID.
 
@@ -91,6 +93,9 @@ Comandos documentais:
 Cada comando converte argumentos de terminal para contratos publicos, como
 `InspectionRequest`, `ParseRequest`, `ProcessingRequest` e `JobResult`, e chama
 `DocumentEngine.local()`.
+
+Assim como API e SDK, a CLI nao grava artefatos diretamente: o storage local e
+acionado pelo engine.
 
 Saidas suportadas:
 
