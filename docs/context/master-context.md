@@ -142,6 +142,11 @@ provider, preparando a Fase 3.5 de fontes e tipografia.
 Fontes, tipografia e texto granular ja possuem contratos iniciais: catalogo de
 fontes, estilos de ocorrencia, glifos, caracteres, palavras, spans, linhas,
 blocos, baselines, relacoes e artefato textual nativo.
+Imagens nativas tambem ja possuem contratos iniciais separados entre recurso,
+ocorrencia visual, mascaras, referencias binarias, camadas por pagina, catalogo
+de imagens e artefato `PDFNativeImageArtifact`. O provider PyMuPDF entrega essa
+camada como best effort, sem rasterizar paginas e sem embutir bytes grandes em
+JSON publico.
 
 Detalhes oficiais do bloco estao em
 [block-3-native-pdf-scene.md](../roadmap/block-3-native-pdf-scene.md).

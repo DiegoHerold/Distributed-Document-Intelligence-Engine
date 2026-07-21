@@ -43,6 +43,9 @@ O mapeamento interno de objetos, content streams e recursos fica em
 Fontes, tipografia e texto granular ficam em
 [pdf-typography.md](pdf-typography.md) e
 [pdf-native-text-model.md](pdf-native-text-model.md).
+Imagens, mascaras e ocorrencias visuais ficam em
+[pdf-images.md](pdf-images.md) e
+[pdf-image-occurrences.md](pdf-image-occurrences.md).
 
 Nenhum contrato publico expoe `fitz.Document`, `fitz.Page`, retangulos,
 excecoes ou enums do PyMuPDF.
@@ -117,8 +120,10 @@ O provider PyMuPDF declara suporte real para:
 - resolucao parcial de catalogo tipografico e extracao textual nativa por
   `rawdict`, preservando glifos, caracteres, palavras, spans, linhas e blocos
   quando disponiveis.
+- extracao parcial de recursos de imagem, soft masks, bytes codificados por
+  hash e ocorrencias visuais via APIs nativas do provider.
 
-As capacidades de imagens finais, vetores, clipping, anotacoes, formularios,
+As capacidades finais de vetores, clipping completo, anotacoes, formularios,
 camadas e renderizacao continuam `unsupported` nesta fase, mesmo que a
 biblioteca subjacente tenha APIs relacionadas. Elas serao ativadas apenas quando
 o Eixo implementar e testar a fronteira correspondente.
@@ -188,11 +193,14 @@ Logs nao incluem bytes do documento nem senha.
 - PyMuPDF nao e instalado como dependencia obrigatoria.
 - `ArtifactReferenceSource` ainda depende de uma composicao futura com
   `ArtifactStore`.
-- Fases 3.1 e 3.2 nao implementam texto granular, extracao de imagens, vetores,
-  content streams, cena visual, preview ou renderizacao final.
+- Fases 3.1 e 3.2 nao implementam texto granular, imagens, vetores, content
+  streams, cena visual, preview ou renderizacao final.
 - A Fase 3.4 preserva content streams e recursos, mas nao decodifica a sequencia
   completa de operadores graficos.
 - As Fases 3.5 e 3.6 preservam texto granular via provider, mas glyph id nativo,
   char code, CID, CMaps e `ToUnicode` completos ainda nao sao decodificados.
+- A Fase 3.7 preserva imagens e ocorrencias como best effort, mas clipping path
+  exato, inline images robustas, Form XObjects aninhados e ordem de operadores
+  ainda dependem de fases posteriores.
 - Concorrencia no mesmo handle e serializada por lock; documentos diferentes
   podem ser abertos por instancias independentes.

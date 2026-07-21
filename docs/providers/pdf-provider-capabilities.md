@@ -1,6 +1,6 @@
 # PDF Provider Capabilities
 
-Status: Fases 3.4 a 3.6 implementadas parcialmente.
+Status: Fases 3.4 a 3.7 implementadas parcialmente.
 
 ## Matriz PyMuPDF
 
@@ -11,8 +11,9 @@ Status: Fases 3.4 a 3.6 implementadas parcialmente.
 | content streams | Parcial | `page.get_contents()` | sequencia preservada, sem operadores |
 | operadores graficos | Nao suportado | adiado para fases posteriores | PyMuPDF nao expoe sequencia bruta neste adapter |
 | fontes | Parcial | `page.get_fonts(full=True)` | sem normalizacao tipografica completa |
-| imagens | Parcial | `page.get_images(full=True)` | sem extrair bytes nem ocorrencias visuais |
-| mascaras | Parcial | `smask` de imagens | mapeamento como recurso tecnico |
+| imagens | Parcial | `page.get_images(full=True)` e `document.extract_image(xref)` | bytes referenciados por hash/tamanho, sem payload no JSON |
+| ocorrencias de imagem | Parcial | `page.get_image_info(xrefs=True)` | geometria e ordem best effort |
+| mascaras | Parcial | `smask` de imagens | soft masks mapeadas como referencias tecnicas |
 | Form XObjects | Parcial | `page.get_xobjects()` quando disponivel | sem decomposicao aninhada completa |
 | ExtGState | Nao suportado | registrado como lacuna | fase 3.8 devera aprofundar |
 | espacos de cor | Parcial | metadados de imagem quando disponiveis | sem conversao de cor |

@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import Protocol, runtime_checkable
 
 from eixo.core import DocumentSource
+from eixo.pdf.images import PDFImageExtractionOptions, PDFNativeImageArtifact
 from eixo.pdf.inspection import PDFInspectionOptions, PDFTechnicalInspection
 from eixo.pdf.native_text import PDFNativeTextArtifact, PDFNativeTextExtractionOptions
 from eixo.pdf.structure import PDFInternalMappingOptions, PDFInternalStructureArtifact
@@ -162,9 +163,27 @@ class PDFNativeTextExtractor(Protocol):
         ...
 
 
+@runtime_checkable
+class PDFNativeImageExtractor(Protocol):
+    async def extract(
+        self,
+        source: DocumentSource,
+        options: PDFImageExtractionOptions | None = None,
+    ) -> PDFNativeImageArtifact:
+        ...
+
+    async def extract_document(
+        self,
+        document: PDFDocumentHandle,
+        options: PDFImageExtractionOptions | None = None,
+    ) -> PDFNativeImageArtifact:
+        ...
+
+
 __all__ = [
     "PDFDocumentHandle",
     "PDFInternalStructureMapper",
+    "PDFNativeImageExtractor",
     "PDFNativeTextExtractor",
     "PDFPageHandle",
     "PDFProvider",

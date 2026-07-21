@@ -27,3 +27,6 @@ API, capacidades e os artefatos PDF criados no Bloco 3.
 - [pdf-font-catalog.md](pdf-font-catalog.md)
 - [pdf-glyph-model.md](pdf-glyph-model.md)
 - [pdf-text-order.md](pdf-text-order.md)
+- [pdf-image-resources.md](pdf-image-resources.md)
+- [pdf-image-masks.md](pdf-image-masks.md)
+- [pdf-image-transforms.md](pdf-image-transforms.md)

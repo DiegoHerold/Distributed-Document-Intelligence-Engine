@@ -152,6 +152,22 @@ Fonts, styles and text occurrences stay separate. Glyphs without Unicode and
 invisible text are preserved with explicit warnings or visibility state when
 the provider exposes enough information.
 
+## PDF Native Images
+
+Fase 3.7 exposes native image resources, masks and visual occurrences:
+
+```python
+images = await engine.extract_pdf_native_images(source)
+
+resource = images.image_catalog.resources[0]
+occurrences = images.image_catalog.occurrences_for_resource(
+    resource.image_resource_id
+)
+```
+
+Image bytes are represented by hashes, sizes and artifact references. Large
+binary payloads are not embedded in the serialized artifact.
+
 Install the backend only when needed:
 
 ```bash

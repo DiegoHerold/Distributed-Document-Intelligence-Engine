@@ -38,13 +38,17 @@ from eixo.plugins import Capability, CapabilityRegistry, ProviderDescriptor
 from eixo.pdf import PDFProvider, PDFProviderRegistry, PDFProviderSettings
 from eixo.pdf import (
     DefaultPDFInternalStructureMapper,
+    DefaultPDFNativeImageExtractor,
     DefaultPDFNativeTextExtractor,
     DefaultPDFTechnicalInspector,
     DefaultPDFTypographyResolver,
     PDFInternalMappingOptions,
     PDFInternalStructureArtifact,
     PDFInternalStructureMapper,
+    PDFImageExtractionOptions,
     PDFInspectionOptions,
+    PDFNativeImageArtifact,
+    PDFNativeImageExtractor,
     PDFNativeTextArtifact,
     PDFNativeTextExtractionOptions,
     PDFNativeTextExtractor,
@@ -69,6 +73,7 @@ class DocumentEngine:
     pdf_provider_registry: PDFProviderRegistry = field(default_factory=PDFProviderRegistry)
     pdf_technical_inspector: PDFTechnicalInspector | None = None
     pdf_internal_structure_mapper: PDFInternalStructureMapper | None = None
+    pdf_native_image_extractor: PDFNativeImageExtractor | None = None
     pdf_typography_resolver: PDFTypographyResolver | None = None
     pdf_native_text_extractor: PDFNativeTextExtractor | None = None
     runtime: LocalRuntime = field(default_factory=LocalRuntime)
@@ -96,6 +101,7 @@ class DocumentEngine:
         pdf_provider_registry: PDFProviderRegistry | None = None,
         pdf_technical_inspector: PDFTechnicalInspector | None = None,
         pdf_internal_structure_mapper: PDFInternalStructureMapper | None = None,
+        pdf_native_image_extractor: PDFNativeImageExtractor | None = None,
         pdf_typography_resolver: PDFTypographyResolver | None = None,
         pdf_native_text_extractor: PDFNativeTextExtractor | None = None,
         pdf: PDFProviderSettings | None = None,
@@ -151,6 +157,9 @@ class DocumentEngine:
             pdf_internal_structure_mapper
             or DefaultPDFInternalStructureMapper(pdf_registry)
         )
+        native_image_extractor = pdf_native_image_extractor or DefaultPDFNativeImageExtractor(
+            pdf_registry
+        )
         typography_resolver = pdf_typography_resolver or DefaultPDFTypographyResolver(
             pdf_registry
         )
@@ -179,6 +188,7 @@ class DocumentEngine:
             pdf_provider_registry=pdf_registry,
             pdf_technical_inspector=technical_inspector,
             pdf_internal_structure_mapper=internal_structure_mapper,
+            pdf_native_image_extractor=native_image_extractor,
             pdf_typography_resolver=typography_resolver,
             pdf_native_text_extractor=native_text_extractor,
             runtime=runtime,
@@ -313,6 +323,23 @@ class DocumentEngine:
             options,
         )
         self._log("engine.pdf_typography.completed")
+        return result
+
+    async def extract_pdf_native_images(
+        self,
+        source: DocumentInput,
+        *,
+        options: PDFImageExtractionOptions | None = None,
+    ) -> PDFNativeImageArtifact:
+        await self._ensure_running()
+        if self.pdf_native_image_extractor is None:
+            raise ConfigurationError("PDF native image extraction is not available")
+        self._log("engine.pdf_native_images.started")
+        result = await self.pdf_native_image_extractor.extract(
+            self._source_from_input(source),
+            options,
+        )
+        self._log("engine.pdf_native_images.completed")
         return result
 
     async def extract_pdf_native_text(

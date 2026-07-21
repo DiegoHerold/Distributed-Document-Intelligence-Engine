@@ -237,6 +237,8 @@ estatisticas. Ver
 
 ### 3.7 - Imagens, mascaras e ocorrencias
 
+Status: concluida.
+
 Separar recurso de imagem e ocorrencia visual.
 
 `PDFImageResource` preserva identificador, hash, bytes originais quando
@@ -248,6 +250,18 @@ matriz de transformacao, recorte, clipping, opacidade, blend mode, ordem de
 desenho, Form XObject pai e visibilidade.
 
 A mesma imagem pode possuir varias ocorrencias.
+
+Entrega implementada: `PDFImageResource`, `PDFImageBinaryReference`,
+`PDFImageMaskReference`, `PDFImageTransparency`, `PDFImageOccurrence`,
+`PDFImageCatalog`, `PDFPageImageLayer`, `PDFNativeImageArtifact`,
+`DefaultPDFNativeImageExtractor`, integracao `DocumentEngine.extract_pdf_native_images()`
+e adapter PyMuPDF best effort. Ver
+[pdf-images.md](../architecture/pdf-images.md),
+[pdf-image-occurrences.md](../architecture/pdf-image-occurrences.md),
+[pdf-image-resources.md](../specifications/pdf-image-resources.md),
+[pdf-image-masks.md](../specifications/pdf-image-masks.md),
+[pdf-image-transforms.md](../specifications/pdf-image-transforms.md) e
+[pdf-image-capabilities.md](../providers/pdf-image-capabilities.md).
 
 ### 3.8 - Vetores e estado grafico
 

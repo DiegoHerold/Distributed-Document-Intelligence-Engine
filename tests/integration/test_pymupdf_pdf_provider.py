@@ -15,6 +15,8 @@ from eixo import (
     PDFInspectionOptions,
     PDFInspectionState,
     PDFInternalMappingOptions,
+    PDFImageExtractionOptions,
+    PDFImageVisibility,
     PDFMappingStatus,
     PDFNativeTextExtractionOptions,
     PDFNativeTextVisibility,
@@ -351,6 +353,60 @@ def test_document_engine_extracts_pdf_native_text_with_fake_backend() -> None:
     asyncio.run(run())
 
 
+def test_pymupdf_provider_extracts_native_images_with_fake_backend() -> None:
+    async def run() -> None:
+        provider = PyMuPDFPDFProvider(_backend=FakePyMuPDFBackend())
+        source = DocumentSource.from_bytes(PDF_BYTES, filename="native-images.pdf")
+
+        async with await provider.open(source) as document:
+            artifact = await document.get_native_images(PDFImageExtractionOptions())
+
+        catalog = artifact.image_catalog
+        assert artifact.statistics.image_resource_count == 2
+        assert artifact.statistics.image_occurrence_count == 2
+        assert artifact.statistics.reused_resource_count == 1
+        assert artifact.statistics.soft_mask_count == 1
+        resource = catalog.resource_by_id("pdfimage:pdfobj:9:0")
+        assert resource is not None
+        assert resource.encoded_artifact_reference is not None
+        assert resource.encoded_artifact_reference.size_bytes == len(b"jpeg-bytes")
+        assert resource.encoded_hash == resource.encoded_artifact_reference.content_hash
+        assert resource.soft_mask_reference is not None
+        occurrences = catalog.occurrences_for_resource(resource.image_resource_id)
+        assert len(occurrences) == 2
+        assert occurrences[0].bounding_box is not None
+        assert occurrences[0].effective_dpi_x == 72.0
+        assert occurrences[1].visibility == PDFImageVisibility.PARTIALLY_CLIPPED
+        assert artifact.pages[0].ordered_occurrence_ids == tuple(
+            occurrence.occurrence_id for occurrence in occurrences
+        )
+        assert "jpeg-bytes" not in str(artifact.to_dict())
+        assert "FakePage" not in str(artifact.to_dict())
+
+    asyncio.run(run())
+
+
+def test_document_engine_extracts_pdf_native_images_with_fake_backend() -> None:
+    async def run() -> None:
+        provider = PyMuPDFPDFProvider(_backend=FakePyMuPDFBackend())
+        engine = DocumentEngine.local(
+            pdf_providers=(provider,),
+            pdf=PDFProviderSettings(default_provider=PYMUPDF_PROVIDER_ID),
+        )
+
+        try:
+            artifact = await engine.extract_pdf_native_images(
+                DocumentSource.from_bytes(PDF_BYTES, filename="engine-images.pdf")
+            )
+        finally:
+            await engine.shutdown()
+
+        assert artifact.image_catalog.resource_by_id("pdfimage:pdfobj:9:0") is not None
+        assert artifact.statistics.image_occurrence_count == 2
+
+    asyncio.run(run())
+
+
 @dataclass(slots=True)
 class FakeRect:
     x0: float
@@ -451,6 +507,21 @@ class FakePage:
         assert full is True
         return [(9, 12, 64, 32, 8, "DeviceRGB", "", "Im0", "DCTDecode", 0)]
 
+    def get_image_info(self, *, xrefs: bool) -> list[dict[str, object]]:
+        assert xrefs is True
+        return [
+            {
+                "xref": 9,
+                "bbox": (10.0, 20.0, 74.0, 52.0),
+                "transform": (64.0, 0.0, 0.0, 32.0, 10.0, 20.0),
+            },
+            {
+                "xref": 9,
+                "bbox": (580.0, 760.0, 640.0, 810.0),
+                "transform": (60.0, 0.0, 0.0, 50.0, 580.0, 760.0),
+            },
+        ]
+
     def get_fonts(self, *, full: bool) -> list[tuple[object, ...]]:
         assert full is True
         return [(8, "n/a", "Type1", "ABCDEE+Arial-BoldMT", "F1", "WinAnsiEncoding")]
@@ -546,3 +617,16 @@ class FakeDocument:
         if xref == 10 and key == "Filter":
             return ("name", "/FlateDecode")
         return ("null", "null")
+
+    def extract_image(self, xref: int) -> dict[str, object]:
+        if xref == 9:
+            return {
+                "image": b"jpeg-bytes",
+                "ext": "jpeg",
+                "width": 64,
+                "height": 32,
+                "colorspace": 3,
+            }
+        if xref == 12:
+            return {"image": b"mask-bytes", "ext": "png", "width": 64, "height": 32}
+        return {}

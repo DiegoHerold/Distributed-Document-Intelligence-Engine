@@ -149,6 +149,11 @@ provider support matrix.
 returns `PDFNativeTextArtifact`, preserving page text layers, glyphs,
 characters, words, spans, baselines, lines, blocks, relations and statistics.
 
+`extract_pdf_native_images(source, options=PDFImageExtractionOptions(...))`
+returns `PDFNativeImageArtifact`, preserving image resources, binary
+references, masks, visual occurrences, page image layers, catalog queries and
+statistics without embedding large bytes in JSON.
+
 ## Current limitation
 
 No real PDF, Excel, OCR, rendering, layout, template or semantic capability exists yet. Without registered capabilities, public methods preserve and propagate `CapabilityNotFoundError`.

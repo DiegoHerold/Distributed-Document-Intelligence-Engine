@@ -27,7 +27,7 @@ from eixo.core import (
     ProviderId,
     ProviderVersion,
 )
-from eixo.geometry import AffineMatrix, BoundingBox, Point, Quad
+from eixo.geometry import AffineMatrix, BoundingBox, NormalizedBoundingBox, Point, Quad
 from eixo.pdf import (
     NativeCharacter,
     NativeGlyph,
@@ -40,11 +40,29 @@ from eixo.pdf import (
     PDFContentStreamReference,
     PDFDocumentHandle,
     PDFEncryptionState,
+    PDFImageBinaryFidelity,
+    PDFImageBinaryReference,
+    PDFImageBinaryRepresentation,
+    PDFImageCapabilityMatrixEntry,
+    PDFImageCatalog,
+    PDFImageClipStatus,
+    PDFImageExtractionMethod,
+    PDFImageExtractionOptions,
+    PDFImageKind,
+    PDFImageMaskReference,
+    PDFImageMaskType,
+    PDFImageOccurrence,
+    PDFImageResource,
+    PDFImageTransparency,
+    PDFImageSupportStatus,
+    PDFImageVisibility,
     PDFFontCatalog,
     PDFFontCapabilityMatrixEntry,
     PDFFontResource,
     PDFFontResourceDescriptor,
     PDFMetricSource,
+    PDFNativeImageArtifact,
+    PDFNativeImageStatistics,
     PDFNativeTextArtifact,
     PDFNativeTextExtractionMethod,
     PDFNativeTextExtractionOptions,
@@ -79,6 +97,7 @@ from eixo.pdf import (
     PDFPaintOrderConfidence,
     PDFPageGeometry,
     PDFPageHandle,
+    PDFPageImageLayer,
     PDFPageReference,
     PDFPageTechnicalHints,
     PDFProbeOptions,
@@ -99,6 +118,8 @@ from eixo.pdf import (
     PDFSupportLevel,
     ProviderLimitation,
     canonical_pdf_page_geometry,
+    image_binary_id,
+    image_occurrence_id,
     native_baseline_id,
     native_block_id,
     native_character_id,
@@ -107,6 +128,7 @@ from eixo.pdf import (
     native_span_id,
     native_word_id,
     resource_id,
+    sha256_hex,
     typography_style_id,
 )
 
@@ -176,8 +198,8 @@ class PyMuPDFPDFProvider:
             supports_glyph_extraction=PDFSupportLevel.PARTIAL,
             supports_word_extraction=PDFSupportLevel.PARTIAL,
             supports_native_blocks=PDFSupportLevel.PARTIAL,
-            supports_image_extraction=PDFSupportLevel.UNSUPPORTED,
-            supports_image_occurrences=PDFSupportLevel.UNSUPPORTED,
+            supports_image_extraction=PDFSupportLevel.PARTIAL,
+            supports_image_occurrences=PDFSupportLevel.PARTIAL,
             supports_vector_extraction=PDFSupportLevel.UNSUPPORTED,
             supports_clipping=PDFSupportLevel.UNSUPPORTED,
             supports_annotations=PDFSupportLevel.UNSUPPORTED,
@@ -490,6 +512,25 @@ class PyMuPDFPDFDocumentHandle:
                 self,
                 opts,
                 typography,
+                structure,
+            )
+
+    async def get_native_images(
+        self,
+        options: PDFImageExtractionOptions | None = None,
+        source_structure_artifact: PDFInternalStructureArtifact | None = None,
+    ) -> PDFNativeImageArtifact:
+        self._ensure_open()
+        opts = options or PDFImageExtractionOptions()
+        async with self._lock:
+            structure = source_structure_artifact or _internal_structure_from_document(
+                self,
+                PDFInternalMappingOptions(),
+            )
+            return await asyncio.to_thread(
+                _native_images_from_document,
+                self,
+                opts,
                 structure,
             )
 
@@ -1345,6 +1386,423 @@ def _native_text_page_layer(
             source=handle.resolved,
             options=options.safe_options(),
             page_index=page_index,
+        ),
+    )
+
+
+def _native_images_from_document(
+    handle: PyMuPDFPDFDocumentHandle,
+    options: PDFImageExtractionOptions,
+    structure: PDFInternalStructureArtifact,
+) -> PDFNativeImageArtifact:
+    resources: dict[str, PDFImageResource] = {}
+    binary_representations: dict[str, PDFImageBinaryReference] = {}
+    masks: dict[str, PDFImageMaskReference] = {}
+    warnings: list[EixoWarning] = []
+    descriptors = (
+        structure.resource_catalog.images + structure.resource_catalog.masks
+    )
+    if options.max_image_resources is not None:
+        descriptors = descriptors[: options.max_image_resources]
+    for descriptor in descriptors:
+        binary = _image_binary_reference(handle, descriptor, options, warnings)
+        if binary is not None:
+            binary_representations[binary.binary_id] = binary
+        resource = PDFImageResource.from_descriptor(
+            descriptor,
+            encoded_artifact_reference=binary,
+        )
+        resources[resource.image_resource_id] = resource
+        if resource.mask_reference is not None:
+            masks[resource.mask_reference.mask_id] = resource.mask_reference
+        if resource.soft_mask_reference is not None:
+            masks[resource.soft_mask_reference.mask_id] = resource.soft_mask_reference
+    page_layers: list[PDFPageImageLayer] = []
+    occurrences: list[PDFImageOccurrence] = []
+    unresolved_occurrences: list[str] = []
+    for page_index in _selected_pages(handle.page_count, options.page_selection):
+        page = handle.document.load_page(page_index)
+        page_reference = _page_reference_for_index(structure, page_index)
+        page_occurrences = _image_occurrences_for_page(
+            handle,
+            page,
+            page_reference,
+            options,
+            resources,
+            warnings,
+        )
+        if options.max_image_occurrences is not None:
+            remaining = options.max_image_occurrences - len(occurrences)
+            page_occurrences = page_occurrences[: max(remaining, 0)]
+        occurrences.extend(page_occurrences)
+        ordered_ids = tuple(
+            occurrence.occurrence_id
+            for occurrence in sorted(
+                page_occurrences,
+                key=lambda item: (
+                    item.paint_order.global_paint_order
+                    if item.paint_order and item.paint_order.global_paint_order is not None
+                    else 0
+                ),
+            )
+        )
+        page_layers.append(
+            PDFPageImageLayer(
+                page_reference=page_reference,
+                occurrence_ids=tuple(item.occurrence_id for item in page_occurrences),
+                ordered_occurrence_ids=ordered_ids,
+                provenance=_provenance(
+                    handle.descriptor,
+                    operation="extract_native_images.page",
+                    source=handle.resolved,
+                    options=options.safe_options(),
+                    page_index=page_index,
+                ),
+            )
+        )
+    used_resource_ids = {occurrence.image_resource_id for occurrence in occurrences}
+    for resource in resources.values():
+        if resource.image_resource_id not in used_resource_ids:
+            warnings.append(
+                EixoWarning(
+                    code="pdf.images.resource_without_known_occurrence",
+                    message="An image resource was resolved without a known occurrence.",
+                    scope=resource.image_resource_id,
+                )
+            )
+    catalog = PDFImageCatalog(
+        resources=tuple(resources.values()),
+        masks=tuple(masks.values()),
+        binary_representations=tuple(binary_representations.values()),
+        occurrences=tuple(occurrences),
+        unresolved_occurrences=tuple(unresolved_occurrences),
+        capability_matrix=_image_capability_matrix(),
+        warnings=tuple(warnings),
+        limitations=_image_limitations(handle.descriptor),
+        provenance=_provenance(
+            handle.descriptor,
+            operation="extract_native_images.catalog",
+            source=handle.resolved,
+            options=options.safe_options(),
+        ),
+    )
+    return PDFNativeImageArtifact(
+        artifact_version=ContractVersion("1.0.0"),
+        provider=handle.descriptor,
+        document_id=structure.document_id,
+        source_structure_artifact=structure,
+        image_catalog=catalog,
+        pages=tuple(page_layers),
+        statistics=_image_statistics(catalog),
+        warnings=tuple(warnings),
+        limitations=catalog.limitations,
+        provenance=_provenance(
+            handle.descriptor,
+            operation="extract_native_images",
+            source=handle.resolved,
+            options=options.safe_options(),
+        ),
+    )
+
+
+def _image_binary_reference(
+    handle: PyMuPDFPDFDocumentHandle,
+    descriptor: PDFImageResourceDescriptor,
+    options: PDFImageExtractionOptions,
+    warnings: list[EixoWarning],
+) -> PDFImageBinaryReference | None:
+    if not options.include_encoded_bytes:
+        return None
+    xref = descriptor.object_reference.xref if descriptor.object_reference else None
+    if xref is None:
+        return None
+    extracted = _call(handle.document, "extract_image", xref)
+    if not isinstance(extracted, dict):
+        warnings.append(
+            EixoWarning(
+                code="pdf.images.image_bytes_unavailable",
+                message="Provider did not expose encoded image bytes.",
+                scope=descriptor.reference.resource_id,
+            )
+        )
+        return None
+    image_bytes = extracted.get("image")
+    if not isinstance(image_bytes, bytes):
+        return None
+    size = len(image_bytes)
+    if (
+        options.max_encoded_image_bytes is not None
+        and size > options.max_encoded_image_bytes
+    ):
+        warnings.append(
+            EixoWarning(
+                code="pdf.images.image_resource_too_large",
+                message="Encoded image bytes exceed the configured extraction limit.",
+                scope=descriptor.reference.resource_id,
+            )
+        )
+        return None
+    ext = str(extracted.get("ext") or "").lower() or None
+    content_hash = sha256_hex(image_bytes)
+    return PDFImageBinaryReference(
+        binary_id=image_binary_id(
+            descriptor.reference.resource_id,
+            PDFImageBinaryRepresentation.PROVIDER_EXTRACTED_ORIGINAL.value,
+        ),
+        content_hash=content_hash,
+        size_bytes=size,
+        representation=PDFImageBinaryRepresentation.PROVIDER_EXTRACTED_ORIGINAL,
+        media_type=f"image/{ext}" if ext else None,
+        detected_format=ext,
+        extraction_method=PDFImageExtractionMethod.PROVIDER_EXTRACT_IMAGE,
+        fidelity=PDFImageBinaryFidelity.PROVIDER_RECONSTRUCTED,
+        provider_metadata={
+            key: str(value)
+            for key, value in extracted.items()
+            if key != "image" and isinstance(key, str)
+        },
+    )
+
+
+def _image_occurrences_for_page(
+    handle: PyMuPDFPDFDocumentHandle,
+    page: object,
+    page_reference: PDFPageReference,
+    options: PDFImageExtractionOptions,
+    resources: dict[str, PDFImageResource],
+    warnings: list[EixoWarning],
+) -> tuple[PDFImageOccurrence, ...]:
+    infos = _image_infos(page)
+    occurrences: list[PDFImageOccurrence] = []
+    page_box = _page_bbox(page)
+    for local_index, info in enumerate(infos):
+        xref = _int_from_mapping(info, "xref")
+        resource = _resource_for_xref(resources, xref)
+        if resource is None:
+            warning_scope = f"page:{page_reference.page_index}:image:{local_index}"
+            warnings.append(
+                EixoWarning(
+                    code="pdf.images.occurrence_with_unresolved_resource",
+                    message="Image occurrence did not match a resolved image resource.",
+                    scope=warning_scope,
+                )
+            )
+            continue
+        box = _bbox_from_mapping(info)
+        quad = _quad_from_box(box)
+        normalized = _normalized_image_box(box, page_box)
+        visibility = _image_visibility(box, page_box)
+        if visibility != PDFImageVisibility.VISIBLE and not options.include_invisible_images:
+            continue
+        effective_dpi = (
+            _effective_dpi(resource, box)
+            if options.calculate_effective_dpi
+            else (None, None)
+        )
+        occurrence = PDFImageOccurrence(
+            occurrence_id=image_occurrence_id(
+                page_reference.page_index,
+                local_index,
+            ),
+            image_resource_id=resource.image_resource_id,
+            page_id=page_reference.stable_id,
+            bounding_box=box,
+            normalized_bounding_box=normalized,
+            quad=quad,
+            local_transform=_matrix_from_value(info.get("transform")),
+            effective_transform=_matrix_from_value(info.get("transform")),
+            soft_mask_reference=resource.soft_mask_reference,
+            transparency=resource.transparency,
+            opacity=1.0,
+            paint_order=PDFPaintOrder(
+                local_paint_order=local_index,
+                global_paint_order=local_index,
+                confidence=PDFPaintOrderConfidence.PROVIDER_APPROXIMATION,
+            ),
+            content_stream_order=local_index,
+            operation_order=local_index,
+            object_reference=resource.object_reference,
+            visibility=visibility,
+            effective_dpi_x=effective_dpi[0],
+            effective_dpi_y=effective_dpi[1],
+            source_reference=resource.resource_reference,
+            geometry_method=PDFImageExtractionMethod.PROVIDER_IMAGE_INFO,
+            geometry_confidence=0.8 if box is not None else 0.0,
+            provenance=_provenance(
+                handle.descriptor,
+                operation="extract_native_images.occurrence",
+                source=handle.resolved,
+                options={},
+                page_index=page_reference.page_index,
+            ),
+        )
+        occurrences.append(occurrence)
+    return tuple(occurrences)
+
+
+def _image_infos(page: object) -> tuple[dict[str, object], ...]:
+    infos = _call(page, "get_image_info", xrefs=True)
+    if isinstance(infos, list):
+        return tuple(item for item in infos if isinstance(item, dict))
+    return ()
+
+
+def _resource_for_xref(
+    resources: dict[str, PDFImageResource],
+    xref: int | None,
+) -> PDFImageResource | None:
+    if xref is None:
+        return None
+    for resource in resources.values():
+        if resource.object_reference is not None and resource.object_reference.xref == xref:
+            return resource
+    return None
+
+
+def _page_bbox(page: object) -> BoundingBox | None:
+    rect = _box(getattr(page, "rect", None))
+    if rect is None:
+        return None
+    return BoundingBox(rect[0], rect[1], rect[2], rect[3])
+
+
+def _image_visibility(
+    box: BoundingBox | None,
+    page_box: BoundingBox | None,
+) -> PDFImageVisibility:
+    if box is None or page_box is None:
+        return PDFImageVisibility.UNKNOWN
+    intersection = box.intersection(page_box)
+    if intersection is None:
+        return PDFImageVisibility.OUTSIDE_CROP_BOX
+    if intersection.almost_equals(box):
+        return PDFImageVisibility.VISIBLE
+    return PDFImageVisibility.PARTIALLY_CLIPPED
+
+
+def _normalized_image_box(
+    box: BoundingBox | None,
+    page_box: BoundingBox | None,
+) -> NormalizedBoundingBox | None:
+    if box is None or page_box is None or not page_box.size.has_positive_area:
+        return None
+    if not page_box.contains_box(box):
+        return None
+    return box.normalize(page_box.size)
+
+
+def _effective_dpi(
+    resource: PDFImageResource,
+    box: BoundingBox | None,
+) -> tuple[float | None, float | None]:
+    if box is None or box.width <= 0 or box.height <= 0:
+        return None, None
+    if resource.width is None or resource.height is None:
+        return None, None
+    return resource.width * 72.0 / box.width, resource.height * 72.0 / box.height
+
+
+def _int_from_mapping(mapping: dict[str, object], key: str) -> int | None:
+    try:
+        value = mapping.get(key)
+        return int(value) if value is not None else None
+    except (TypeError, ValueError):
+        return None
+
+
+def _image_capability_matrix() -> tuple[PDFImageCapabilityMatrixEntry, ...]:
+    return (
+        PDFImageCapabilityMatrixEntry(
+            information="Image XObject",
+            support=PDFImageSupportStatus.PROVIDER_DERIVED,
+            origin="page.get_images(full=True)",
+            precision="xref_metadata",
+        ),
+        PDFImageCapabilityMatrixEntry(
+            information="encoded bytes",
+            support=PDFImageSupportStatus.PARTIALLY_SUPPORTED,
+            origin="document.extract_image(xref)",
+            precision="provider_extracted_original",
+            limitation="Original encoded stream identity depends on provider support.",
+        ),
+        PDFImageCapabilityMatrixEntry(
+            information="position",
+            support=PDFImageSupportStatus.PARTIALLY_SUPPORTED,
+            origin="page.get_image_info(xrefs=True)",
+            precision="provider_bbox",
+        ),
+        PDFImageCapabilityMatrixEntry(
+            information="inline image",
+            support=PDFImageSupportStatus.UNKNOWN,
+            origin="page.get_image_info(xrefs=True)",
+            limitation="Inline images may not have stable xref-backed resources.",
+        ),
+        PDFImageCapabilityMatrixEntry(
+            information="clipping",
+            support=PDFImageSupportStatus.HEURISTIC,
+            origin="bbox_vs_page_rect",
+            precision="bounding_box_intersection",
+        ),
+        PDFImageCapabilityMatrixEntry(
+            information="soft mask",
+            support=PDFImageSupportStatus.PARTIALLY_SUPPORTED,
+            origin="page.get_images(full=True)",
+            precision="smask_xref",
+        ),
+    )
+
+
+def _image_limitations(
+    descriptor: PDFProviderDescriptor,
+) -> tuple[ProviderLimitation, ...]:
+    return descriptor.limitations + (
+        ProviderLimitation(
+            code="image_original_stream_identity_provider_derived",
+            message="Image bytes come from provider extraction and may be normalized.",
+            scope="image",
+        ),
+        ProviderLimitation(
+            code="image_clipping_partially_supported",
+            message="Clipping is inferred from occurrence bounds and page bounds.",
+            scope="image_occurrence",
+        ),
+        ProviderLimitation(
+            code="image_content_stream_operation_unavailable",
+            message="Image occurrences are not linked to decoded draw operators yet.",
+            scope="content_stream",
+        ),
+    )
+
+
+def _image_statistics(catalog: PDFImageCatalog) -> PDFNativeImageStatistics:
+    used_counts: dict[str, int] = {}
+    for occurrence in catalog.occurrences:
+        used_counts[occurrence.image_resource_id] = (
+            used_counts.get(occurrence.image_resource_id, 0) + 1
+        )
+    return PDFNativeImageStatistics(
+        image_resource_count=len(catalog.resources),
+        image_occurrence_count=len(catalog.occurrences),
+        inline_image_count=sum(
+            1
+            for resource in catalog.resources
+            if resource.image_kind == PDFImageKind.INLINE_IMAGE
+        ),
+        image_mask_count=sum(
+            1
+            for resource in catalog.resources
+            if resource.image_kind == PDFImageKind.IMAGE_MASK
+        ),
+        soft_mask_count=len(catalog.soft_masks)
+        + sum(1 for resource in catalog.resources if resource.soft_mask_reference),
+        unresolved_resource_count=len(catalog.unresolved_resources),
+        unresolved_occurrence_count=len(catalog.unresolved_occurrences),
+        invisible_occurrence_count=len(catalog.invisible_occurrences()),
+        reused_resource_count=sum(1 for count in used_counts.values() if count > 1),
+        normalized_export_count=sum(
+            1
+            for binary in catalog.binary_representations
+            if binary.representation == PDFImageBinaryRepresentation.NORMALIZED_EXPORT
         ),
     )
 
