@@ -139,6 +139,9 @@ matrizes afins e coordenadas normalizadas.
 O inventario interno de PDF tambem foi iniciado com grafo de objetos,
 referencias, content streams, catalogo de recursos e matriz de suporte do
 provider, preparando a Fase 3.5 de fontes e tipografia.
+Fontes, tipografia e texto granular ja possuem contratos iniciais: catalogo de
+fontes, estilos de ocorrencia, glifos, caracteres, palavras, spans, linhas,
+blocos, baselines, relacoes e artefato textual nativo.
 
 Detalhes oficiais do bloco estao em
 [block-3-native-pdf-scene.md](../roadmap/block-3-native-pdf-scene.md).

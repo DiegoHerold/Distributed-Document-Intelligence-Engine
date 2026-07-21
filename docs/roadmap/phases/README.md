@@ -59,8 +59,8 @@ Contexto detalhado: [block-3-native-pdf-scene.md](../block-3-native-pdf-scene.md
 | 3.2 | Criar o PDF Inspector tecnico | Concluida |
 | 3.3 | Definir geometria e coordenadas canonicas | Concluida |
 | 3.4 | Mapear recursos, objetos e content streams | Concluida |
-| 3.5 | Criar catalogo de fontes e tipografia | Planejada |
-| 3.6 | Extrair texto granular e hierarquia textual nativa | Planejada |
+| 3.5 | Criar catalogo de fontes e tipografia | Concluida |
+| 3.6 | Extrair texto granular e hierarquia textual nativa | Concluida |
 | 3.7 | Extrair imagens, mascaras e ocorrencias | Planejada |
 | 3.8 | Extrair vetores e estado grafico | Planejada |
 | 3.9 | Extrair links, anotacoes, formularios e camadas | Planejada |

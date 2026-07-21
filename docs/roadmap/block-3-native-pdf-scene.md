@@ -181,6 +181,8 @@ e mapper best effort do provider PyMuPDF. Ver
 
 ### 3.5 - Fontes e tipografia
 
+Status: concluida.
+
 Criar `PDFFontResource`, `PDFFontCatalog`, `PDFTextStyle` e
 `PDFGlyphMetrics`.
 
@@ -194,7 +196,15 @@ Fontes incorporadas podem ser preservadas como artefatos internos quando legal e
 tecnicamente permitido, mas nao devem ser expostas indiscriminadamente como
 arquivos publicos.
 
+Entrega implementada: `PDFFontResource`, `PDFFontProgramReference`,
+`PDFEncoding`, `PDFCMapReference`, `PDFGlyphMapping`, `PDFTextStyle`,
+`PDFFontCatalog` e `PDFTypographyArtifact`. Ver
+[pdf-typography.md](../architecture/pdf-typography.md) e
+[pdf-font-catalog.md](../specifications/pdf-font-catalog.md).
+
 ### 3.6 - Texto granular e hierarquia textual nativa
+
+Status: concluida.
 
 Extrair texto no maior nivel de detalhe viavel:
 
@@ -216,6 +226,14 @@ semantica. Paragrafos, titulos e secoes pertencem ao Bloco 6.
 
 Texto convertido em curvas deve permanecer como vetor, sem afirmar existencia de
 texto nativo.
+
+Entrega implementada: `NativeGlyph`, `NativeCharacter`, `NativeWord`,
+`NativeTextSpan`, `PDFTextBaseline`, `NativeTextLine`, `NativeTextBlock`,
+`PDFNativeTextLayer` e `PDFNativeTextArtifact`, com relacoes tipadas e
+estatisticas. Ver
+[pdf-native-text-model.md](../architecture/pdf-native-text-model.md),
+[pdf-glyph-model.md](../specifications/pdf-glyph-model.md) e
+[pdf-text-order.md](../specifications/pdf-text-order.md).
 
 ### 3.7 - Imagens, mascaras e ocorrencias
 

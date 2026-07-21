@@ -5,6 +5,7 @@ import importlib
 import importlib.util
 import logging
 import time
+import unicodedata
 from dataclasses import dataclass, field
 from pathlib import Path
 from types import ModuleType
@@ -26,13 +27,42 @@ from eixo.core import (
     ProviderId,
     ProviderVersion,
 )
+from eixo.geometry import AffineMatrix, BoundingBox, Point, Quad
 from eixo.pdf import (
+    NativeCharacter,
+    NativeGlyph,
+    NativeTextBlock,
+    NativeTextLine,
+    NativeTextSpan,
+    NativeWord,
     PDFBasicInfo,
     PDFContentStream,
     PDFContentStreamReference,
     PDFDocumentHandle,
     PDFEncryptionState,
+    PDFFontCatalog,
+    PDFFontCapabilityMatrixEntry,
+    PDFFontResource,
     PDFFontResourceDescriptor,
+    PDFMetricSource,
+    PDFNativeTextArtifact,
+    PDFNativeTextExtractionMethod,
+    PDFNativeTextExtractionOptions,
+    PDFNativeTextGroupingMethod,
+    PDFNativeTextLayer,
+    PDFNativeTextRelation,
+    PDFNativeTextRelationType,
+    PDFNativeTextStatistics,
+    PDFNativeTextVisibility,
+    PDFPageNativeTextLayer,
+    PDFTextBaseline,
+    PDFTextColor,
+    PDFTextDirection,
+    PDFTextStyle,
+    PDFTypographyArtifact,
+    PDFTypographyOptions,
+    PDFTypographySupportStatus,
+    PDFWritingMode,
     PDFImageResourceDescriptor,
     PDFIndirectObject,
     PDFInternalMappingOptions,
@@ -45,6 +75,8 @@ from eixo.pdf import (
     PDFObjectRelation,
     PDFObjectRelationType,
     PDFOpenOptions,
+    PDFPaintOrder,
+    PDFPaintOrderConfidence,
     PDFPageGeometry,
     PDFPageHandle,
     PDFPageReference,
@@ -67,7 +99,15 @@ from eixo.pdf import (
     PDFSupportLevel,
     ProviderLimitation,
     canonical_pdf_page_geometry,
+    native_baseline_id,
+    native_block_id,
+    native_character_id,
+    native_glyph_id,
+    native_line_id,
+    native_span_id,
+    native_word_id,
     resource_id,
+    typography_style_id,
 )
 
 logger = logging.getLogger(__name__)
@@ -132,10 +172,10 @@ class PyMuPDFPDFProvider:
             supports_annotation_inspection=PDFSupportLevel.PARTIAL,
             supports_form_inspection=PDFSupportLevel.PARTIAL,
             supports_layer_inspection=PDFSupportLevel.UNSUPPORTED,
-            supports_text_extraction=PDFSupportLevel.UNSUPPORTED,
-            supports_glyph_extraction=PDFSupportLevel.UNSUPPORTED,
-            supports_word_extraction=PDFSupportLevel.UNSUPPORTED,
-            supports_native_blocks=PDFSupportLevel.UNSUPPORTED,
+            supports_text_extraction=PDFSupportLevel.PARTIAL,
+            supports_glyph_extraction=PDFSupportLevel.PARTIAL,
+            supports_word_extraction=PDFSupportLevel.PARTIAL,
+            supports_native_blocks=PDFSupportLevel.PARTIAL,
             supports_image_extraction=PDFSupportLevel.UNSUPPORTED,
             supports_image_occurrences=PDFSupportLevel.UNSUPPORTED,
             supports_vector_extraction=PDFSupportLevel.UNSUPPORTED,
@@ -412,6 +452,46 @@ class PyMuPDFPDFDocumentHandle:
         opts = options or PDFInternalMappingOptions()
         async with self._lock:
             return await asyncio.to_thread(_internal_structure_from_document, self, opts)
+
+    async def get_typography(
+        self,
+        options: PDFTypographyOptions | None = None,
+        source_structure_artifact: PDFInternalStructureArtifact | None = None,
+    ) -> PDFTypographyArtifact:
+        self._ensure_open()
+        opts = options or PDFTypographyOptions()
+        async with self._lock:
+            structure = source_structure_artifact or _internal_structure_from_document(
+                self,
+                PDFInternalMappingOptions(),
+            )
+            return await asyncio.to_thread(_typography_from_structure, self, opts, structure)
+
+    async def get_native_text(
+        self,
+        options: PDFNativeTextExtractionOptions | None = None,
+        typography_artifact: PDFTypographyArtifact | None = None,
+        source_structure_artifact: PDFInternalStructureArtifact | None = None,
+    ) -> PDFNativeTextArtifact:
+        self._ensure_open()
+        opts = options or PDFNativeTextExtractionOptions()
+        async with self._lock:
+            structure = source_structure_artifact or _internal_structure_from_document(
+                self,
+                PDFInternalMappingOptions(),
+            )
+            typography = typography_artifact or _typography_from_structure(
+                self,
+                PDFTypographyOptions(page_selection=opts.page_selection),
+                structure,
+            )
+            return await asyncio.to_thread(
+                _native_text_from_document,
+                self,
+                opts,
+                typography,
+                structure,
+            )
 
 
 @dataclass(slots=True)
@@ -824,6 +904,926 @@ def _internal_structure_from_document(
             options=options.safe_options(),
         ),
     )
+
+
+def _typography_from_structure(
+    handle: PyMuPDFPDFDocumentHandle,
+    options: PDFTypographyOptions,
+    structure: PDFInternalStructureArtifact,
+) -> PDFTypographyArtifact:
+    fonts = tuple(
+        PDFFontResource.from_descriptor(descriptor)
+        for descriptor in structure.resource_catalog.fonts[: options.max_fonts]
+    )
+    encodings = tuple(font.encoding for font in fonts if font.encoding is not None)
+    font_programs = tuple(
+        font.embedded_program_reference
+        for font in fonts
+        if font.embedded_program_reference is not None
+    )
+    catalog = PDFFontCatalog(
+        fonts=fonts,
+        font_programs=font_programs if options.include_font_programs else (),
+        encodings=encodings,
+        capability_matrix=_typography_capability_matrix(),
+        warnings=_typography_warnings(fonts),
+        provenance=_provenance(
+            handle.descriptor,
+            operation="resolve_typography",
+            source=handle.resolved,
+            options=options.safe_options(),
+        ),
+    )
+    return PDFTypographyArtifact(
+        artifact_version=ContractVersion("1.0.0"),
+        provider=handle.descriptor,
+        document_id=structure.document_id,
+        source_structure_artifact=structure,
+        font_catalog=catalog,
+        unresolved_resources=structure.resource_catalog.unknown_resources,
+        warnings=catalog.warnings,
+        limitations=handle.descriptor.limitations
+        + (
+            ProviderLimitation(
+                code="font_program_bytes_not_exposed",
+                message="Embedded font programs are referenced only when detected.",
+                scope="font",
+            ),
+            ProviderLimitation(
+                code="font_metrics_partially_supported",
+                message="PyMuPDF page font tuples do not expose full PDF font metrics.",
+                scope="font",
+            ),
+            ProviderLimitation(
+                code="cmap_and_tounicode_partially_supported",
+                message="CMaps and ToUnicode maps are preserved by reference when available.",
+                scope="font",
+            ),
+        ),
+        provenance=catalog.provenance,
+    )
+
+
+def _native_text_from_document(
+    handle: PyMuPDFPDFDocumentHandle,
+    options: PDFNativeTextExtractionOptions,
+    typography: PDFTypographyArtifact,
+    structure: PDFInternalStructureArtifact,
+) -> PDFNativeTextArtifact:
+    page_indexes = _selected_pages(handle.page_count, options.page_selection)
+    page_layers: list[PDFPageNativeTextLayer] = []
+    warnings: list[EixoWarning] = []
+    styles: dict[str, PDFTextStyle] = {
+        style.style_id: style for style in typography.font_catalog.text_styles
+    }
+    for page_index in page_indexes:
+        page = handle.document.load_page(page_index)
+        layer = _native_text_page_layer(
+            handle,
+            page,
+            page_index,
+            options,
+            typography,
+            structure,
+            styles,
+        )
+        page_layers.append(layer)
+        warnings.extend(layer.warnings)
+    statistics = _native_text_statistics(tuple(page_layers))
+    limitations = handle.descriptor.limitations + _native_text_limitations()
+    text_layer = PDFNativeTextLayer(
+        page_text_layers=tuple(page_layers),
+        text_styles=tuple(styles.values()),
+        font_references=typography.font_catalog.fonts,
+        unresolved_text=tuple(
+            item for layer in page_layers for item in layer.unresolved_text
+        ),
+        warnings=tuple(warnings),
+        limitations=limitations,
+        provenance=_provenance(
+            handle.descriptor,
+            operation="extract_native_text.layer",
+            source=handle.resolved,
+            options=options.safe_options(),
+        ),
+    )
+    return PDFNativeTextArtifact(
+        artifact_version=ContractVersion("1.0.0"),
+        provider=handle.descriptor,
+        document_id=structure.document_id,
+        source_structure_artifact=structure,
+        typography_artifact=typography,
+        pages=tuple(page_layers),
+        text_layer=text_layer,
+        warnings=tuple(warnings),
+        limitations=limitations,
+        statistics=statistics,
+        provenance=_provenance(
+            handle.descriptor,
+            operation="extract_native_text",
+            source=handle.resolved,
+            options=options.safe_options(),
+        ),
+    )
+
+
+def _native_text_page_layer(
+    handle: PyMuPDFPDFDocumentHandle,
+    page: object,
+    page_index: int,
+    options: PDFNativeTextExtractionOptions,
+    typography: PDFTypographyArtifact,
+    structure: PDFInternalStructureArtifact,
+    styles: dict[str, PDFTextStyle],
+) -> PDFPageNativeTextLayer:
+    page_reference = _page_reference_for_index(structure, page_index)
+    raw = _call(page, "get_text", "rawdict")
+    if not isinstance(raw, dict):
+        warning = EixoWarning(
+            code="pdf.native_text.rawdict_unavailable",
+            message="PyMuPDF did not provide raw text dictionaries for this page.",
+            scope=f"page:{page_index}",
+        )
+        return PDFPageNativeTextLayer(
+            page_reference=page_reference,
+            warnings=(warning,),
+            provenance=_provenance(
+                handle.descriptor,
+                operation="extract_native_text.page",
+                source=handle.resolved,
+                options=options.safe_options(),
+                page_index=page_index,
+            ),
+        )
+    glyphs: list[NativeGlyph] = []
+    characters: list[NativeCharacter] = []
+    words: list[NativeWord] = []
+    spans: list[NativeTextSpan] = []
+    baselines: list[PDFTextBaseline] = []
+    lines: list[NativeTextLine] = []
+    blocks: list[NativeTextBlock] = []
+    relations: list[PDFNativeTextRelation] = []
+    unresolved: list[str] = []
+    warnings: list[EixoWarning] = []
+    glyph_order = 0
+    word_order = 0
+    page_id = page_reference.stable_id
+    for block_index, block in enumerate(_raw_blocks(raw)):
+        block_id = native_block_id(page_index, block_index)
+        block_line_ids: list[str] = []
+        block_span_ids: list[str] = []
+        block_word_ids: list[str] = []
+        block_glyph_ids: list[str] = []
+        for line_index, line in enumerate(_raw_lines(block)):
+            line_id = native_line_id(page_index, block_index, line_index)
+            baseline_id = native_baseline_id(page_index, block_index, line_index)
+            direction = _line_direction(line)
+            baseline = _baseline_from_line(
+                baseline_id,
+                page_id,
+                line,
+                direction,
+            )
+            if baseline is not None:
+                baselines.append(baseline)
+            line_span_ids: list[str] = []
+            line_word_ids: list[str] = []
+            line_glyph_ids: list[str] = []
+            for span_index, span in enumerate(_raw_spans(line)):
+                span_id = native_span_id(page_index, block_index, line_index, span_index)
+                font_id = _font_id_for_span(span, typography)
+                style = _style_from_span(span, font_id, direction, handle, page_index)
+                styles.setdefault(style.style_id, style)
+                span_glyph_ids: list[str] = []
+                span_character_ids: list[str] = []
+                chars = _raw_chars(span)
+                if not chars:
+                    unresolved.append(span_id)
+                    warnings.append(
+                        EixoWarning(
+                            code="pdf.native_text.span_without_chars",
+                            message="A native text span had no per-character data.",
+                            scope=span_id,
+                        )
+                    )
+                for char_index, char in enumerate(chars):
+                    if (
+                        options.max_glyphs_per_page is not None
+                        and len(glyphs) >= options.max_glyphs_per_page
+                    ):
+                        warnings.append(
+                            EixoWarning(
+                                code="pdf.native_text.max_glyphs_per_page_reached",
+                                message="Glyph extraction stopped at the configured page limit.",
+                                scope=page_id,
+                            )
+                        )
+                        break
+                    glyph_id = native_glyph_id(page_index, len(spans), char_index)
+                    unicode_text = _char_text(char)
+                    normalized = _normalize_unicode(unicode_text, options.normalize_unicode)
+                    glyph_box = _bbox_from_mapping(char) or _bbox_from_mapping(span)
+                    glyph_quad = _quad_from_box(glyph_box)
+                    mapping_confidence = 0.85 if unicode_text else 0.0
+                    geometry_confidence = 0.85 if glyph_box is not None else 0.0
+                    if not unicode_text:
+                        warnings.append(
+                            EixoWarning(
+                                code="pdf.native_text.unicode_mapping_missing",
+                                message="A glyph was preserved without Unicode text.",
+                                scope=glyph_id,
+                            )
+                        )
+                    glyph = NativeGlyph(
+                        glyph_id=glyph_id,
+                        page_id=page_id,
+                        font_id=font_id,
+                        style_id=style.style_id,
+                        unicode_text=unicode_text,
+                        normalized_unicode_text=normalized,
+                        origin=_point_from_value(char.get("origin"))
+                        if isinstance(char, dict)
+                        else None,
+                        bounding_box=glyph_box,
+                        quad=glyph_quad,
+                        baseline_reference=baseline_id if baseline is not None else None,
+                        font_size=_float_value(span.get("size"))
+                        if isinstance(span, dict)
+                        else None,
+                        writing_mode=_writing_mode(direction),
+                        direction=direction,
+                        paint_order=_paint_order(glyph_order),
+                        source_order=glyph_order,
+                        provider_order=glyph_order,
+                        visibility=_visibility_from_span(span),
+                        render_mode=_int_value(span.get("render_mode"))
+                        if isinstance(span, dict)
+                        else None,
+                        mapping_confidence=mapping_confidence,
+                        geometry_confidence=geometry_confidence,
+                        extraction_method=PDFNativeTextExtractionMethod.PROVIDER_RAWDICT,
+                        provenance=_provenance(
+                            handle.descriptor,
+                            operation="extract_native_text.glyph",
+                            source=handle.resolved,
+                            options={},
+                            page_index=page_index,
+                        ),
+                    )
+                    glyphs.append(glyph)
+                    span_glyph_ids.append(glyph_id)
+                    line_glyph_ids.append(glyph_id)
+                    block_glyph_ids.append(glyph_id)
+                    relations.append(
+                        PDFNativeTextRelation(
+                            source_id=glyph_id,
+                            target_id=span_id,
+                            relation_type=PDFNativeTextRelationType.GLYPH_BELONGS_TO_SPAN,
+                        )
+                    )
+                    if font_id is not None:
+                        relations.append(
+                            PDFNativeTextRelation(
+                                source_id=glyph_id,
+                                target_id=font_id,
+                                relation_type=PDFNativeTextRelationType.ELEMENT_USES_FONT,
+                            )
+                        )
+                    relations.append(
+                        PDFNativeTextRelation(
+                            source_id=glyph_id,
+                            target_id=style.style_id,
+                            relation_type=PDFNativeTextRelationType.ELEMENT_USES_STYLE,
+                        )
+                    )
+                    if unicode_text and options.include_characters:
+                        for local_index, value in enumerate(unicode_text):
+                            character_id = native_character_id(glyph_id, local_index)
+                            character = NativeCharacter(
+                                character_id=character_id,
+                                page_id=page_id,
+                                glyph_ids=(glyph_id,),
+                                unicode_text=value,
+                                normalized_unicode_text=_normalize_unicode(
+                                    value,
+                                    options.normalize_unicode,
+                                ),
+                                unicode_codepoints=(f"U+{ord(value):04X}",),
+                                mapping_confidence=mapping_confidence,
+                                provenance=glyph.provenance,
+                            )
+                            characters.append(character)
+                            span_character_ids.append(character_id)
+                    glyph_order += 1
+                span_words = _words_from_glyphs(
+                    page_index,
+                    line_index,
+                    word_order,
+                    page_id,
+                    span_glyph_ids,
+                    glyphs,
+                    characters,
+                    relations,
+                    handle,
+                )
+                words.extend(span_words)
+                word_order += len(span_words)
+                line_word_ids.extend(word.word_id for word in span_words)
+                block_word_ids.extend(word.word_id for word in span_words)
+                span_text = _span_text(span, span_glyph_ids, glyphs)
+                text_span = NativeTextSpan(
+                    span_id=span_id,
+                    page_id=page_id,
+                    glyph_ids=tuple(span_glyph_ids) if options.include_glyphs else (),
+                    character_ids=tuple(span_character_ids),
+                    word_ids=tuple(word.word_id for word in span_words),
+                    style_id=style.style_id,
+                    font_id=font_id,
+                    raw_text=span_text if options.preserve_raw_text else None,
+                    normalized_text=_normalize_unicode(span_text, options.normalize_unicode),
+                    bounding_box=_bbox_from_mapping(span),
+                    quad=_quad_from_box(_bbox_from_mapping(span)),
+                    baseline_reference=baseline_id if baseline is not None else None,
+                    grouping_method=PDFNativeTextGroupingMethod.NATIVE_PROVIDER,
+                    confidence=0.85,
+                    source_order=len(spans),
+                    provider_order=len(spans),
+                    paint_order=_paint_order(len(spans)),
+                    extraction_method=PDFNativeTextExtractionMethod.PROVIDER_RAWDICT,
+                    provenance=_provenance(
+                        handle.descriptor,
+                        operation="extract_native_text.span",
+                        source=handle.resolved,
+                        options={},
+                        page_index=page_index,
+                    ),
+                )
+                spans.append(text_span)
+                line_span_ids.append(span_id)
+                block_span_ids.append(span_id)
+                relations.append(
+                    PDFNativeTextRelation(
+                        source_id=span_id,
+                        target_id=line_id,
+                        relation_type=PDFNativeTextRelationType.SPAN_BELONGS_TO_LINE,
+                    )
+                )
+            line_text = _join_span_texts(line_span_ids, spans)
+            lines.append(
+                NativeTextLine(
+                    line_id=line_id,
+                    page_id=page_id,
+                    span_ids=tuple(line_span_ids) if options.include_native_lines else (),
+                    word_ids=tuple(line_word_ids),
+                    glyph_ids=tuple(line_glyph_ids),
+                    baseline_id=baseline_id if baseline is not None else None,
+                    raw_text=line_text if options.preserve_raw_text else None,
+                    bounding_box=_bbox_from_mapping(line),
+                    direction=direction,
+                    grouping_method=PDFNativeTextGroupingMethod.NATIVE_PROVIDER,
+                    confidence=0.8,
+                    source_order=len(lines),
+                    provider_order=len(lines),
+                    provenance=_provenance(
+                        handle.descriptor,
+                        operation="extract_native_text.line",
+                        source=handle.resolved,
+                        options={},
+                        page_index=page_index,
+                    ),
+                )
+            )
+            block_line_ids.append(line_id)
+            block_word_ids.extend(line_word_ids)
+            relations.append(
+                PDFNativeTextRelation(
+                    source_id=line_id,
+                    target_id=block_id,
+                    relation_type=PDFNativeTextRelationType.LINE_BELONGS_TO_BLOCK,
+                )
+            )
+        blocks.append(
+            NativeTextBlock(
+                block_id=block_id,
+                page_id=page_id,
+                line_ids=tuple(block_line_ids) if options.include_native_blocks else (),
+                span_ids=tuple(block_span_ids),
+                word_ids=tuple(block_word_ids),
+                glyph_ids=tuple(block_glyph_ids),
+                raw_text=_join_line_texts(block_line_ids, lines)
+                if options.preserve_raw_text
+                else None,
+                bounding_box=_bbox_from_mapping(block),
+                grouping_method=PDFNativeTextGroupingMethod.NATIVE_PROVIDER,
+                confidence=0.8,
+                source_order=len(blocks),
+                provider_order=len(blocks),
+                provenance=_provenance(
+                    handle.descriptor,
+                    operation="extract_native_text.block",
+                    source=handle.resolved,
+                    options={},
+                    page_index=page_index,
+                ),
+            )
+        )
+    return PDFPageNativeTextLayer(
+        page_reference=page_reference,
+        glyphs=tuple(glyphs) if options.include_glyphs else (),
+        characters=tuple(characters) if options.include_characters else (),
+        words=tuple(words) if options.include_words else (),
+        spans=tuple(spans),
+        baselines=tuple(baselines),
+        lines=tuple(lines) if options.include_native_lines else (),
+        blocks=tuple(blocks) if options.include_native_blocks else (),
+        relations=tuple(relations),
+        unresolved_text=tuple(unresolved),
+        warnings=tuple(warnings),
+        provenance=_provenance(
+            handle.descriptor,
+            operation="extract_native_text.page",
+            source=handle.resolved,
+            options=options.safe_options(),
+            page_index=page_index,
+        ),
+    )
+
+
+def _typography_capability_matrix() -> tuple[PDFFontCapabilityMatrixEntry, ...]:
+    return (
+        PDFFontCapabilityMatrixEntry(
+            information="internal_name",
+            support=PDFTypographySupportStatus.PROVIDER_DERIVED,
+            origin="page.get_fonts(full=True)",
+            precision="provider_tuple",
+        ),
+        PDFFontCapabilityMatrixEntry(
+            information="family",
+            support=PDFTypographySupportStatus.HEURISTIC,
+            origin="font_name_normalization",
+            precision="conservative",
+            limitation="Family normalization does not claim semantic font equivalence.",
+        ),
+        PDFFontCapabilityMatrixEntry(
+            information="encoding",
+            support=PDFTypographySupportStatus.PARTIALLY_SUPPORTED,
+            origin="page.get_fonts(full=True)",
+            precision="provider_tuple",
+        ),
+        PDFFontCapabilityMatrixEntry(
+            information="glyph_id",
+            support=PDFTypographySupportStatus.UNSUPPORTED,
+            origin="page.get_text(rawdict)",
+            limitation="The adapter preserves text units but not stable provider glyph ids.",
+        ),
+        PDFFontCapabilityMatrixEntry(
+            information="metrics",
+            support=PDFTypographySupportStatus.PARTIALLY_SUPPORTED,
+            origin="rawdict span and char geometry",
+            precision="observed_occurrence",
+        ),
+        PDFFontCapabilityMatrixEntry(
+            information="embedded_font",
+            support=PDFTypographySupportStatus.PARTIALLY_SUPPORTED,
+            origin="resource references",
+            limitation="Embedded font bytes are not extracted or exposed.",
+        ),
+    )
+
+
+def _typography_warnings(fonts: tuple[PDFFontResource, ...]) -> tuple[EixoWarning, ...]:
+    warnings: list[EixoWarning] = []
+    if any(font.subset_prefix for font in fonts):
+        warnings.append(
+            EixoWarning(
+                code="pdf.typography.subset_fonts_detected",
+                message="Subset font prefixes were preserved separately.",
+            )
+        )
+    if any(font.subtype.value == "Type3" for font in fonts):
+        warnings.append(
+            EixoWarning(
+                code="pdf.typography.type3_font_partially_supported",
+                message="Type3 font glyph programs are not decoded in this phase.",
+            )
+        )
+    return tuple(warnings)
+
+
+def _selected_pages(
+    page_count: int,
+    selection: tuple[int, ...] | None,
+) -> tuple[int, ...]:
+    if selection is None:
+        return tuple(range(page_count))
+    return tuple(page for page in selection if 0 <= page < page_count)
+
+
+def _page_reference_for_index(
+    structure: PDFInternalStructureArtifact,
+    page_index: int,
+) -> PDFPageReference:
+    for page in structure.pages:
+        if page.page_reference.page_index == page_index:
+            return page.page_reference
+    return PDFPageReference(page_index=page_index, page_number=page_index + 1)
+
+
+def _raw_blocks(raw: dict[str, object]) -> tuple[dict[str, object], ...]:
+    blocks = raw.get("blocks", ())
+    if not isinstance(blocks, list):
+        return ()
+    return tuple(
+        block
+        for block in blocks
+        if isinstance(block, dict) and int(block.get("type", 0) or 0) == 0
+    )
+
+
+def _raw_lines(block: dict[str, object]) -> tuple[dict[str, object], ...]:
+    lines = block.get("lines", ())
+    if not isinstance(lines, list):
+        return ()
+    return tuple(line for line in lines if isinstance(line, dict))
+
+
+def _raw_spans(line: dict[str, object]) -> tuple[dict[str, object], ...]:
+    spans = line.get("spans", ())
+    if not isinstance(spans, list):
+        return ()
+    return tuple(span for span in spans if isinstance(span, dict))
+
+
+def _raw_chars(span: dict[str, object]) -> tuple[dict[str, object], ...]:
+    chars = span.get("chars", ())
+    if isinstance(chars, list):
+        return tuple(char for char in chars if isinstance(char, dict))
+    text = span.get("text")
+    if not isinstance(text, str):
+        return ()
+    box = span.get("bbox")
+    return tuple({"c": char, "bbox": box} for char in text)
+
+
+def _line_direction(line: dict[str, object]) -> PDFTextDirection:
+    raw_dir = line.get("dir")
+    if not isinstance(raw_dir, (list, tuple)) or len(raw_dir) < 2:
+        return PDFTextDirection.UNKNOWN
+    try:
+        dx = float(raw_dir[0])
+        dy = float(raw_dir[1])
+    except (TypeError, ValueError):
+        return PDFTextDirection.UNKNOWN
+    if abs(dy) > abs(dx):
+        return PDFTextDirection.TOP_TO_BOTTOM if dy > 0 else PDFTextDirection.BOTTOM_TO_TOP
+    return PDFTextDirection.RIGHT_TO_LEFT if dx < 0 else PDFTextDirection.LEFT_TO_RIGHT
+
+
+def _baseline_from_line(
+    baseline_id: str,
+    page_id: str,
+    line: dict[str, object],
+    direction: PDFTextDirection,
+) -> PDFTextBaseline | None:
+    box = _bbox_from_mapping(line)
+    if box is None:
+        return None
+    if direction in {PDFTextDirection.TOP_TO_BOTTOM, PDFTextDirection.BOTTOM_TO_TOP}:
+        start = Point((box.x_min + box.x_max) / 2.0, box.y_min)
+        end = Point((box.x_min + box.x_max) / 2.0, box.y_max)
+        angle = 90.0 if direction == PDFTextDirection.TOP_TO_BOTTOM else 270.0
+    else:
+        start = Point(box.x_min, box.y_max)
+        end = Point(box.x_max, box.y_max)
+        angle = 180.0 if direction == PDFTextDirection.RIGHT_TO_LEFT else 0.0
+    return PDFTextBaseline(
+        baseline_id=baseline_id,
+        page_id=page_id,
+        start=start,
+        end=end,
+        angle_degrees=angle,
+        confidence=0.65,
+        extraction_method=PDFNativeTextExtractionMethod.PROVIDER_RAWDICT,
+    )
+
+
+def _font_id_for_span(
+    span: dict[str, object],
+    typography: PDFTypographyArtifact,
+) -> str | None:
+    font_name = span.get("font")
+    if not isinstance(font_name, str) or not font_name:
+        return None
+    for font in typography.font_catalog.fonts:
+        if font.internal_font_name == font_name or font.postscript_name == font_name:
+            return font.font_id
+        if font.base_font_name == font_name or font.resource_name == font_name:
+            return font.font_id
+    for font in typography.font_catalog.fonts:
+        if font.normalized_family and font.normalized_family in font_name:
+            return font.font_id
+    return None
+
+
+def _style_from_span(
+    span: dict[str, object],
+    font_id: str | None,
+    direction: PDFTextDirection,
+    handle: PyMuPDFPDFDocumentHandle,
+    page_index: int,
+) -> PDFTextStyle:
+    size = _float_value(span.get("size"))
+    color_value = span.get("color")
+    color_key = str(color_value) if color_value is not None else None
+    render_mode = _int_value(span.get("render_mode"))
+    return PDFTextStyle(
+        style_id=typography_style_id(font_id, size, color_key, render_mode),
+        font_id=font_id,
+        font_size=size,
+        fill_color=_text_color(color_value),
+        fill_opacity=_float_value(span.get("alpha")),
+        text_render_mode=render_mode,
+        writing_mode=_writing_mode(direction),
+        direction=direction,
+        text_matrix=_matrix_from_value(span.get("text_matrix")),
+        effective_transform=_matrix_from_value(span.get("matrix")),
+        provenance=_provenance(
+            handle.descriptor,
+            operation="extract_native_text.style",
+            source=handle.resolved,
+            options={},
+            page_index=page_index,
+        ),
+    )
+
+
+def _text_color(value: object) -> PDFTextColor | None:
+    if value is None:
+        return None
+    if isinstance(value, int):
+        red = ((value >> 16) & 255) / 255.0
+        green = ((value >> 8) & 255) / 255.0
+        blue = (value & 255) / 255.0
+        return PDFTextColor(
+            original_value=str(value),
+            color_space="DeviceRGB",
+            normalized_rgb=(red, green, blue),
+            source=PDFMetricSource.PROVIDER,
+        )
+    return PDFTextColor(original_value=str(value), source=PDFMetricSource.PROVIDER)
+
+
+def _visibility_from_span(span: dict[str, object]) -> PDFNativeTextVisibility:
+    render_mode = _int_value(span.get("render_mode"))
+    alpha = _float_value(span.get("alpha"))
+    if render_mode == 3:
+        return PDFNativeTextVisibility.INVISIBLE_RENDER_MODE
+    if alpha == 0.0:
+        return PDFNativeTextVisibility.ZERO_OPACITY
+    return PDFNativeTextVisibility.VISIBLE
+
+
+def _writing_mode(direction: PDFTextDirection) -> PDFWritingMode:
+    if direction in {PDFTextDirection.TOP_TO_BOTTOM, PDFTextDirection.BOTTOM_TO_TOP}:
+        return PDFWritingMode.VERTICAL
+    if direction == PDFTextDirection.ROTATED:
+        return PDFWritingMode.ROTATED
+    if direction == PDFTextDirection.UNKNOWN:
+        return PDFWritingMode.UNKNOWN
+    return PDFWritingMode.HORIZONTAL
+
+
+def _char_text(char: dict[str, object]) -> str | None:
+    value = char.get("c")
+    return value if isinstance(value, str) and value else None
+
+
+def _normalize_unicode(value: str | None, enabled: bool) -> str | None:
+    if value is None:
+        return None
+    return unicodedata.normalize("NFKC", value) if enabled else value
+
+
+def _point_from_value(value: object) -> Point | None:
+    if not isinstance(value, (list, tuple)) or len(value) < 2:
+        return None
+    try:
+        return Point(float(value[0]), float(value[1]))
+    except (TypeError, ValueError):
+        return None
+
+
+def _bbox_from_mapping(value: object) -> BoundingBox | None:
+    if not isinstance(value, dict):
+        return None
+    box = value.get("bbox")
+    if not isinstance(box, (list, tuple)) or len(box) < 4:
+        return None
+    try:
+        return BoundingBox(float(box[0]), float(box[1]), float(box[2]), float(box[3]))
+    except (TypeError, ValueError):
+        return None
+
+
+def _quad_from_box(box: BoundingBox | None) -> Quad | None:
+    if box is None:
+        return None
+    return Quad(box.top_left, box.top_right, box.bottom_right, box.bottom_left)
+
+
+def _matrix_from_value(value: object) -> AffineMatrix | None:
+    if not isinstance(value, (list, tuple)) or len(value) < 6:
+        return None
+    try:
+        return AffineMatrix(
+            float(value[0]),
+            float(value[1]),
+            float(value[2]),
+            float(value[3]),
+            float(value[4]),
+            float(value[5]),
+        )
+    except (TypeError, ValueError):
+        return None
+
+
+def _paint_order(index: int) -> PDFPaintOrder:
+    return PDFPaintOrder(
+        local_paint_order=index,
+        global_paint_order=index,
+        confidence=PDFPaintOrderConfidence.PROVIDER_APPROXIMATION,
+    )
+
+
+def _words_from_glyphs(
+    page_index: int,
+    line_index: int,
+    first_word_index: int,
+    page_id: str,
+    span_glyph_ids: list[str],
+    glyphs: list[NativeGlyph],
+    characters: list[NativeCharacter],
+    relations: list[PDFNativeTextRelation],
+    handle: PyMuPDFPDFDocumentHandle,
+) -> tuple[NativeWord, ...]:
+    glyph_by_id = {glyph.glyph_id: glyph for glyph in glyphs}
+    character_ids_by_glyph: dict[str, list[str]] = {}
+    for character in characters:
+        for glyph_id in character.glyph_ids:
+            character_ids_by_glyph.setdefault(glyph_id, []).append(character.character_id)
+    words: list[NativeWord] = []
+    current: list[NativeGlyph] = []
+
+    def flush() -> None:
+        if not current:
+            return
+        word_index = first_word_index + len(words)
+        word_id = native_word_id(page_index, line_index, word_index)
+        word_glyph_ids = tuple(glyph.glyph_id for glyph in current)
+        text = "".join(glyph.unicode_text or "" for glyph in current)
+        if not text:
+            current.clear()
+            return
+        box = _union_boxes(glyph.bounding_box for glyph in current)
+        word = NativeWord(
+            word_id=word_id,
+            page_id=page_id,
+            glyph_ids=word_glyph_ids,
+            character_ids=tuple(
+                character_id
+                for glyph in current
+                for character_id in character_ids_by_glyph.get(glyph.glyph_id, ())
+            ),
+            text=text,
+            normalized_text=_normalize_unicode(text, True),
+            bounding_box=box,
+            quad=_quad_from_box(box),
+            grouping_method=PDFNativeTextGroupingMethod.EIXO_CONSERVATIVE,
+            confidence=0.7,
+            source_order=word_index,
+            provider_order=word_index,
+            provenance=_provenance(
+                handle.descriptor,
+                operation="extract_native_text.word",
+                source=handle.resolved,
+                options={},
+                page_index=page_index,
+            ),
+        )
+        words.append(word)
+        for glyph_id in word_glyph_ids:
+            relations.append(
+                PDFNativeTextRelation(
+                    source_id=glyph_id,
+                    target_id=word_id,
+                    relation_type=PDFNativeTextRelationType.GLYPH_BELONGS_TO_WORD,
+                )
+            )
+        current.clear()
+
+    for glyph_id in span_glyph_ids:
+        glyph = glyph_by_id[glyph_id]
+        if (glyph.unicode_text or "").isspace():
+            flush()
+            current = []
+            continue
+        current.append(glyph)
+    flush()
+    return tuple(words)
+
+
+def _span_text(
+    span: dict[str, object],
+    span_glyph_ids: list[str],
+    glyphs: list[NativeGlyph],
+) -> str | None:
+    text = span.get("text")
+    if isinstance(text, str):
+        return text
+    glyph_by_id = {glyph.glyph_id: glyph for glyph in glyphs}
+    value = "".join(glyph_by_id[glyph_id].unicode_text or "" for glyph_id in span_glyph_ids)
+    return value or None
+
+
+def _join_span_texts(span_ids: list[str], spans: list[NativeTextSpan]) -> str | None:
+    by_id = {span.span_id: span for span in spans}
+    text = "".join(by_id[span_id].raw_text or "" for span_id in span_ids)
+    return text or None
+
+
+def _join_line_texts(line_ids: list[str], lines: list[NativeTextLine]) -> str | None:
+    by_id = {line.line_id: line for line in lines}
+    text = "\n".join(by_id[line_id].raw_text or "" for line_id in line_ids)
+    return text or None
+
+
+def _union_boxes(values: object) -> BoundingBox | None:
+    boxes = [box for box in values if isinstance(box, BoundingBox)]
+    if not boxes:
+        return None
+    current = boxes[0]
+    for box in boxes[1:]:
+        current = current.union(box)
+    return current
+
+
+def _native_text_statistics(
+    layers: tuple[PDFPageNativeTextLayer, ...],
+) -> PDFNativeTextStatistics:
+    glyphs = tuple(glyph for layer in layers for glyph in layer.glyphs)
+    return PDFNativeTextStatistics(
+        glyph_count=len(glyphs),
+        character_count=sum(len(layer.characters) for layer in layers),
+        word_count=sum(len(layer.words) for layer in layers),
+        span_count=sum(len(layer.spans) for layer in layers),
+        line_count=sum(len(layer.lines) for layer in layers),
+        block_count=sum(len(layer.blocks) for layer in layers),
+        unresolved_unicode_count=sum(1 for glyph in glyphs if not glyph.unicode_text),
+        unresolved_font_count=sum(1 for glyph in glyphs if glyph.font_id is None),
+        invisible_text_count=sum(
+            1 for glyph in glyphs if glyph.visibility != PDFNativeTextVisibility.VISIBLE
+        ),
+        rotated_text_count=sum(
+            1 for glyph in glyphs if glyph.direction == PDFTextDirection.ROTATED
+        ),
+        vertical_text_count=sum(
+            1 for glyph in glyphs if glyph.writing_mode == PDFWritingMode.VERTICAL
+        ),
+    )
+
+
+def _native_text_limitations() -> tuple[ProviderLimitation, ...]:
+    return (
+        ProviderLimitation(
+            code="glyph_id_unavailable",
+            message="Stable font glyph ids are not exposed by the current PyMuPDF adapter.",
+            scope="glyph",
+        ),
+        ProviderLimitation(
+            code="content_operation_links_unavailable",
+            message="Glyphs are ordered by provider rawdict order, not decoded operators.",
+            scope="text",
+        ),
+        ProviderLimitation(
+            code="form_text_partially_mapped",
+            message="Text inside nested Form XObjects is not decomposed separately yet.",
+            scope="form_xobject",
+        ),
+    )
+
+
+def _float_value(value: object) -> float | None:
+    try:
+        return float(value) if value is not None else None
+    except (TypeError, ValueError):
+        return None
+
+
+def _int_value(value: object) -> int | None:
+    try:
+        return int(value) if value is not None else None
+    except (TypeError, ValueError):
+        return None
 
 
 def _indirect_objects(

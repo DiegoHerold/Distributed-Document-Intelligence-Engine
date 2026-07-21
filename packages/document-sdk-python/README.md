@@ -135,6 +135,23 @@ The artifact preserves object references, content stream sequence, resource
 catalogs, provider limitations and provenance. It does not extract full text,
 image bytes, vectors or visual scene elements.
 
+## PDF Typography And Native Text
+
+Phases 3.5 and 3.6 expose typography and native text artifacts:
+
+```python
+typography = await engine.resolve_pdf_typography(source)
+native_text = await engine.extract_pdf_native_text(source)
+
+fonts = typography.font_catalog.fonts
+glyphs = native_text.pages[0].glyphs
+statistics = native_text.statistics
+```
+
+Fonts, styles and text occurrences stay separate. Glyphs without Unicode and
+invisible text are preserved with explicit warnings or visibility state when
+the provider exposes enough information.
+
 Install the backend only when needed:
 
 ```bash

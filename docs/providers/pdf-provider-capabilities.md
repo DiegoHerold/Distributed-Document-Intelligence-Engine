@@ -1,6 +1,6 @@
 # PDF Provider Capabilities
 
-Status: Fase 3.4 implementada.
+Status: Fases 3.4 a 3.6 implementadas parcialmente.
 
 ## Matriz PyMuPDF
 
@@ -20,6 +20,8 @@ Status: Fase 3.4 implementada.
 | shadings | Nao suportado | preservado como recurso desconhecido se reportado | sem interpretacao |
 | camadas opcionais | Nao suportado | registrado como lacuna | sem UI ou toggles |
 | ordem de pintura | Parcial | ordem de content streams | sem ordem de operadores |
+| tipografia | Parcial | `get_fonts(full=True)` | sem decodificar programas de fonte |
+| texto granular | Parcial | `get_text("rawdict")` | sem glyph id, char code ou operador bruto |
 
 ## Regra
 

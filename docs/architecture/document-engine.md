@@ -141,6 +141,14 @@ work; the generic `inspect()` and `parse()` flows remain capability-backed.
 returns `PDFInternalStructureArtifact`, preserving the PDF object graph, content
 stream sequence, resource catalog, limitations and provenance.
 
+`resolve_pdf_typography(source, options=PDFTypographyOptions(...))` returns
+`PDFTypographyArtifact`, preserving the font catalog, encodings, text styles and
+provider support matrix.
+
+`extract_pdf_native_text(source, options=PDFNativeTextExtractionOptions(...))`
+returns `PDFNativeTextArtifact`, preserving page text layers, glyphs,
+characters, words, spans, baselines, lines, blocks, relations and statistics.
+
 ## Current limitation
 
 No real PDF, Excel, OCR, rendering, layout, template or semantic capability exists yet. Without registered capabilities, public methods preserve and propagate `CapabilityNotFoundError`.

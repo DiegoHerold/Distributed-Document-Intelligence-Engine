@@ -4,7 +4,9 @@ from typing import Protocol, runtime_checkable
 
 from eixo.core import DocumentSource
 from eixo.pdf.inspection import PDFInspectionOptions, PDFTechnicalInspection
+from eixo.pdf.native_text import PDFNativeTextArtifact, PDFNativeTextExtractionOptions
 from eixo.pdf.structure import PDFInternalMappingOptions, PDFInternalStructureArtifact
+from eixo.pdf.typography import PDFTypographyArtifact, PDFTypographyOptions
 from eixo.pdf.models import (
     PDFBasicInfo,
     PDFOpenOptions,
@@ -126,10 +128,46 @@ class PDFInternalStructureMapper(Protocol):
         ...
 
 
+@runtime_checkable
+class PDFTypographyResolver(Protocol):
+    async def resolve(
+        self,
+        source: DocumentSource,
+        options: PDFTypographyOptions | None = None,
+    ) -> PDFTypographyArtifact:
+        ...
+
+    async def resolve_document(
+        self,
+        document: PDFDocumentHandle,
+        options: PDFTypographyOptions | None = None,
+    ) -> PDFTypographyArtifact:
+        ...
+
+
+@runtime_checkable
+class PDFNativeTextExtractor(Protocol):
+    async def extract(
+        self,
+        source: DocumentSource,
+        options: PDFNativeTextExtractionOptions | None = None,
+    ) -> PDFNativeTextArtifact:
+        ...
+
+    async def extract_document(
+        self,
+        document: PDFDocumentHandle,
+        options: PDFNativeTextExtractionOptions | None = None,
+    ) -> PDFNativeTextArtifact:
+        ...
+
+
 __all__ = [
     "PDFDocumentHandle",
     "PDFInternalStructureMapper",
+    "PDFNativeTextExtractor",
     "PDFPageHandle",
     "PDFProvider",
     "PDFTechnicalInspector",
+    "PDFTypographyResolver",
 ]

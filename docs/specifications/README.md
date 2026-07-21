@@ -24,3 +24,6 @@ API, capacidades e os artefatos PDF criados no Bloco 3.
 - [api-v1.md](api-v1.md)
 - [pdf-resource-catalog.md](pdf-resource-catalog.md)
 - [pdf-paint-order.md](pdf-paint-order.md)
+- [pdf-font-catalog.md](pdf-font-catalog.md)
+- [pdf-glyph-model.md](pdf-glyph-model.md)
+- [pdf-text-order.md](pdf-text-order.md)

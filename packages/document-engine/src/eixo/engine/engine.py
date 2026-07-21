@@ -38,13 +38,21 @@ from eixo.plugins import Capability, CapabilityRegistry, ProviderDescriptor
 from eixo.pdf import PDFProvider, PDFProviderRegistry, PDFProviderSettings
 from eixo.pdf import (
     DefaultPDFInternalStructureMapper,
+    DefaultPDFNativeTextExtractor,
     DefaultPDFTechnicalInspector,
+    DefaultPDFTypographyResolver,
     PDFInternalMappingOptions,
     PDFInternalStructureArtifact,
     PDFInternalStructureMapper,
     PDFInspectionOptions,
+    PDFNativeTextArtifact,
+    PDFNativeTextExtractionOptions,
+    PDFNativeTextExtractor,
     PDFTechnicalInspection,
     PDFTechnicalInspector,
+    PDFTypographyArtifact,
+    PDFTypographyOptions,
+    PDFTypographyResolver,
 )
 from eixo.runtime.local import LocalRuntime, LocalRuntimeConfig
 from eixo.engine.configuration import LocalEngineConfig
@@ -61,6 +69,8 @@ class DocumentEngine:
     pdf_provider_registry: PDFProviderRegistry = field(default_factory=PDFProviderRegistry)
     pdf_technical_inspector: PDFTechnicalInspector | None = None
     pdf_internal_structure_mapper: PDFInternalStructureMapper | None = None
+    pdf_typography_resolver: PDFTypographyResolver | None = None
+    pdf_native_text_extractor: PDFNativeTextExtractor | None = None
     runtime: LocalRuntime = field(default_factory=LocalRuntime)
     inspect_document: InspectDocument | None = None
     parse_document: ParseDocument | None = None
@@ -86,6 +96,8 @@ class DocumentEngine:
         pdf_provider_registry: PDFProviderRegistry | None = None,
         pdf_technical_inspector: PDFTechnicalInspector | None = None,
         pdf_internal_structure_mapper: PDFInternalStructureMapper | None = None,
+        pdf_typography_resolver: PDFTypographyResolver | None = None,
+        pdf_native_text_extractor: PDFNativeTextExtractor | None = None,
         pdf: PDFProviderSettings | None = None,
         data_directory: str | Path | None = None,
         job_database_path: str | Path | None = None,
@@ -139,6 +151,12 @@ class DocumentEngine:
             pdf_internal_structure_mapper
             or DefaultPDFInternalStructureMapper(pdf_registry)
         )
+        typography_resolver = pdf_typography_resolver or DefaultPDFTypographyResolver(
+            pdf_registry
+        )
+        native_text_extractor = pdf_native_text_extractor or DefaultPDFNativeTextExtractor(
+            pdf_registry
+        )
         ingest_document = IngestDocument.local(
             engine_config.data_directory,
             security_policy=engine_config.security,
@@ -161,6 +179,8 @@ class DocumentEngine:
             pdf_provider_registry=pdf_registry,
             pdf_technical_inspector=technical_inspector,
             pdf_internal_structure_mapper=internal_structure_mapper,
+            pdf_typography_resolver=typography_resolver,
+            pdf_native_text_extractor=native_text_extractor,
             runtime=runtime,
             inspect_document=InspectDocument(service),
             parse_document=ParseDocument(service),
@@ -276,6 +296,40 @@ class DocumentEngine:
             options,
         )
         self._log("engine.pdf_structure_mapping.completed")
+        return result
+
+    async def resolve_pdf_typography(
+        self,
+        source: DocumentInput,
+        *,
+        options: PDFTypographyOptions | None = None,
+    ) -> PDFTypographyArtifact:
+        await self._ensure_running()
+        if self.pdf_typography_resolver is None:
+            raise ConfigurationError("PDF typography resolution is not available")
+        self._log("engine.pdf_typography.started")
+        result = await self.pdf_typography_resolver.resolve(
+            self._source_from_input(source),
+            options,
+        )
+        self._log("engine.pdf_typography.completed")
+        return result
+
+    async def extract_pdf_native_text(
+        self,
+        source: DocumentInput,
+        *,
+        options: PDFNativeTextExtractionOptions | None = None,
+    ) -> PDFNativeTextArtifact:
+        await self._ensure_running()
+        if self.pdf_native_text_extractor is None:
+            raise ConfigurationError("PDF native text extraction is not available")
+        self._log("engine.pdf_native_text.started")
+        result = await self.pdf_native_text_extractor.extract(
+            self._source_from_input(source),
+            options,
+        )
+        self._log("engine.pdf_native_text.completed")
         return result
 
     async def parse(

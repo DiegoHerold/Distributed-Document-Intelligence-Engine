@@ -40,6 +40,9 @@ A inspecao tecnica especializada fica em
 [pdf-technical-inspector.md](pdf-technical-inspector.md).
 O mapeamento interno de objetos, content streams e recursos fica em
 [pdf-object-model.md](pdf-object-model.md).
+Fontes, tipografia e texto granular ficam em
+[pdf-typography.md](pdf-typography.md) e
+[pdf-native-text-model.md](pdf-native-text-model.md).
 
 Nenhum contrato publico expoe `fitz.Document`, `fitz.Page`, retangulos,
 excecoes ou enums do PyMuPDF.
@@ -111,12 +114,14 @@ O provider PyMuPDF declara suporte real para:
   anotacoes e formularios, usados pelo `PDFTechnicalInspector`;
 - mapeamento parcial de objetos, xref, content streams, fontes, imagens,
   mascaras e XObjects para `PDFInternalStructureArtifact`.
+- resolucao parcial de catalogo tipografico e extracao textual nativa por
+  `rawdict`, preservando glifos, caracteres, palavras, spans, linhas e blocos
+  quando disponiveis.
 
-As capacidades de texto granular, glifos, palavras, imagens, vetores, clipping,
-content streams, objetos, fontes incorporadas, camadas e renderizacao continuam
-`unsupported` nesta fase, mesmo que a biblioteca subjacente tenha APIs
-relacionadas. Elas serao ativadas apenas quando o Eixo implementar e testar a
-fronteira correspondente.
+As capacidades de imagens finais, vetores, clipping, anotacoes, formularios,
+camadas e renderizacao continuam `unsupported` nesta fase, mesmo que a
+biblioteca subjacente tenha APIs relacionadas. Elas serao ativadas apenas quando
+o Eixo implementar e testar a fronteira correspondente.
 
 ## Ciclo De Vida
 
@@ -187,5 +192,7 @@ Logs nao incluem bytes do documento nem senha.
   content streams, cena visual, preview ou renderizacao final.
 - A Fase 3.4 preserva content streams e recursos, mas nao decodifica a sequencia
   completa de operadores graficos.
+- As Fases 3.5 e 3.6 preservam texto granular via provider, mas glyph id nativo,
+  char code, CID, CMaps e `ToUnicode` completos ainda nao sao decodificados.
 - Concorrencia no mesmo handle e serializada por lock; documentos diferentes
   podem ser abertos por instancias independentes.

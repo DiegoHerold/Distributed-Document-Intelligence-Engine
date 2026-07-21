@@ -16,6 +16,8 @@ from eixo import (
     PDFInspectionState,
     PDFInternalMappingOptions,
     PDFMappingStatus,
+    PDFNativeTextExtractionOptions,
+    PDFNativeTextVisibility,
     PDFOpenOptions,
     PDFPasswordRequiredError,
     PDFProbeOptions,
@@ -26,6 +28,7 @@ from eixo import (
     PDFResourceType,
     PDFSecurityStatus,
     PDFTechnicalProfile,
+    PDFTypographyOptions,
 )
 from eixo.providers.pdf.pymupdf import PYMUPDF_PROVIDER_ID, PyMuPDFPDFProvider
 
@@ -234,7 +237,7 @@ def test_pymupdf_provider_maps_internal_structure_with_fake_backend() -> None:
             PDFMappingStatus.UNSUPPORTED_BY_PROVIDER
         )
         assert len(artifact.resource_catalog.fonts) == 1
-        assert artifact.resource_catalog.fonts[0].base_font == "Helvetica"
+        assert artifact.resource_catalog.fonts[0].base_font == "ABCDEE+Arial-BoldMT"
         assert len(artifact.resource_catalog.images) == 1
         assert artifact.resource_catalog.images[0].width == 64
         assert len(artifact.resource_catalog.masks) == 1
@@ -270,6 +273,84 @@ def test_document_engine_maps_pdf_internal_structure_with_fake_backend() -> None
     asyncio.run(run())
 
 
+def test_pymupdf_provider_resolves_typography_with_fake_backend() -> None:
+    async def run() -> None:
+        provider = PyMuPDFPDFProvider(_backend=FakePyMuPDFBackend())
+        source = DocumentSource.from_bytes(PDF_BYTES, filename="typography.pdf")
+
+        async with await provider.open(source) as document:
+            structure = await document.get_internal_structure()
+            typography = await document.get_typography(
+                PDFTypographyOptions(),
+                structure,
+            )
+
+        font = typography.font_catalog.fonts[0]
+        assert font.font_id == "pdffont:pdfobj:8:0"
+        assert font.subset is True
+        assert font.subset_prefix == "ABCDEE"
+        assert font.normalized_family == "Arial"
+        assert font.encoding is not None
+        assert font.encoding.name == "WinAnsiEncoding"
+        assert typography.font_catalog.capability_matrix
+        assert "FakeDocument" not in str(typography.to_dict())
+
+    asyncio.run(run())
+
+
+def test_pymupdf_provider_extracts_native_text_with_fake_backend() -> None:
+    async def run() -> None:
+        provider = PyMuPDFPDFProvider(_backend=FakePyMuPDFBackend())
+        source = DocumentSource.from_bytes(PDF_BYTES, filename="native-text.pdf")
+
+        async with await provider.open(source) as document:
+            native = await document.get_native_text(PDFNativeTextExtractionOptions())
+
+        assert native.statistics.glyph_count == 6
+        assert native.statistics.character_count == 5
+        assert native.statistics.word_count == 3
+        assert native.statistics.unresolved_unicode_count == 1
+        assert native.statistics.invisible_text_count == 1
+        page = native.pages[0]
+        assert page.blocks[0].line_ids
+        assert page.lines[0].span_ids
+        assert page.spans[0].glyph_ids
+        assert page.words[1].normalized_text == "fi"
+        assert page.glyphs[-1].unicode_text is None
+        assert page.glyphs[-2].visibility == PDFNativeTextVisibility.INVISIBLE_RENDER_MODE
+        assert page.relations
+        assert native.text_layer is not None
+        assert native.text_layer.text_styles
+        assert "FakePage" not in str(native.to_dict())
+
+    asyncio.run(run())
+
+
+def test_document_engine_extracts_pdf_native_text_with_fake_backend() -> None:
+    async def run() -> None:
+        provider = PyMuPDFPDFProvider(_backend=FakePyMuPDFBackend())
+        engine = DocumentEngine.local(
+            pdf_providers=(provider,),
+            pdf=PDFProviderSettings(default_provider=PYMUPDF_PROVIDER_ID),
+        )
+
+        try:
+            typography = await engine.resolve_pdf_typography(
+                DocumentSource.from_bytes(PDF_BYTES, filename="engine-typography.pdf")
+            )
+            native = await engine.extract_pdf_native_text(
+                DocumentSource.from_bytes(PDF_BYTES, filename="engine-native-text.pdf")
+            )
+        finally:
+            await engine.shutdown()
+
+        assert typography.font_catalog.fonts[0].normalized_family == "Arial"
+        assert native.statistics.line_count == 1
+        assert native.statistics.block_count == 1
+
+    asyncio.run(run())
+
+
 @dataclass(slots=True)
 class FakeRect:
     x0: float
@@ -286,9 +367,85 @@ class FakePage:
     rotation: int = 0
     user_unit: float = 1.0
 
-    def get_text(self, mode: str) -> str:
-        assert mode == "text"
-        return "hello pdf"
+    def get_text(self, mode: str):
+        if mode == "text":
+            return "hello pdf"
+        if mode == "rawdict":
+            return {
+                "blocks": [
+                    {
+                        "type": 0,
+                        "bbox": (10.0, 20.0, 80.0, 42.0),
+                        "lines": [
+                            {
+                                "bbox": (10.0, 20.0, 80.0, 42.0),
+                                "dir": (1.0, 0.0),
+                                "spans": [
+                                    {
+                                        "text": "Hi fi",
+                                        "font": "Arial-BoldMT",
+                                        "size": 12.0,
+                                        "color": 0,
+                                        "bbox": (10.0, 20.0, 48.0, 32.0),
+                                        "origin": (10.0, 30.0),
+                                        "chars": [
+                                            {
+                                                "c": "H",
+                                                "bbox": (10.0, 20.0, 18.0, 32.0),
+                                                "origin": (10.0, 30.0),
+                                            },
+                                            {
+                                                "c": "i",
+                                                "bbox": (18.0, 20.0, 22.0, 32.0),
+                                                "origin": (18.0, 30.0),
+                                            },
+                                            {
+                                                "c": " ",
+                                                "bbox": (22.0, 20.0, 26.0, 32.0),
+                                                "origin": (22.0, 30.0),
+                                            },
+                                            {
+                                                "c": "\ufb01",
+                                                "bbox": (26.0, 20.0, 36.0, 32.0),
+                                                "origin": (26.0, 30.0),
+                                            },
+                                        ],
+                                    },
+                                    {
+                                        "text": "x",
+                                        "font": "Arial-BoldMT",
+                                        "size": 12.0,
+                                        "color": 0,
+                                        "render_mode": 3,
+                                        "bbox": (50.0, 20.0, 58.0, 32.0),
+                                        "chars": [
+                                            {
+                                                "c": "x",
+                                                "bbox": (50.0, 20.0, 58.0, 32.0),
+                                                "origin": (50.0, 30.0),
+                                            }
+                                        ],
+                                    },
+                                    {
+                                        "font": "Arial-BoldMT",
+                                        "size": 12.0,
+                                        "color": 0,
+                                        "bbox": (60.0, 20.0, 68.0, 32.0),
+                                        "chars": [
+                                            {
+                                                "c": "",
+                                                "bbox": (60.0, 20.0, 68.0, 32.0),
+                                                "origin": (60.0, 30.0),
+                                            }
+                                        ],
+                                    },
+                                ],
+                            }
+                        ],
+                    }
+                ]
+            }
+        raise AssertionError(mode)
 
     def get_images(self, *, full: bool) -> list[tuple[str]]:
         assert full is True
@@ -296,7 +453,7 @@ class FakePage:
 
     def get_fonts(self, *, full: bool) -> list[tuple[object, ...]]:
         assert full is True
-        return [(8, "n/a", "Type1", "Helvetica", "F1", "WinAnsiEncoding")]
+        return [(8, "n/a", "Type1", "ABCDEE+Arial-BoldMT", "F1", "WinAnsiEncoding")]
 
     def get_xobjects(self) -> list[tuple[object, ...]]:
         return [(11, "Fm0", "Form", 0, 0, 100, 100)]
