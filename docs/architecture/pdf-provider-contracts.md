@@ -38,6 +38,8 @@ Os contratos ficam em `eixo.pdf`:
 
 A inspecao tecnica especializada fica em
 [pdf-technical-inspector.md](pdf-technical-inspector.md).
+O mapeamento interno de objetos, content streams e recursos fica em
+[pdf-object-model.md](pdf-object-model.md).
 
 Nenhum contrato publico expoe `fitz.Document`, `fitz.Page`, retangulos,
 excecoes ou enums do PyMuPDF.
@@ -106,7 +108,9 @@ O provider PyMuPDF declara suporte real para:
 - informacoes basicas;
 - geometria basica de pagina;
 - sinais tecnicos leves de presenca de texto, imagens, vetores, links,
-  anotacoes e formularios, usados pelo `PDFTechnicalInspector`.
+  anotacoes e formularios, usados pelo `PDFTechnicalInspector`;
+- mapeamento parcial de objetos, xref, content streams, fontes, imagens,
+  mascaras e XObjects para `PDFInternalStructureArtifact`.
 
 As capacidades de texto granular, glifos, palavras, imagens, vetores, clipping,
 content streams, objetos, fontes incorporadas, camadas e renderizacao continuam
@@ -181,5 +185,7 @@ Logs nao incluem bytes do documento nem senha.
   `ArtifactStore`.
 - Fases 3.1 e 3.2 nao implementam texto granular, extracao de imagens, vetores,
   content streams, cena visual, preview ou renderizacao final.
+- A Fase 3.4 preserva content streams e recursos, mas nao decodifica a sequencia
+  completa de operadores graficos.
 - Concorrencia no mesmo handle e serializada por lock; documentos diferentes
   podem ser abertos por instancias independentes.

@@ -54,9 +54,8 @@ API, biblioteca, workers e CLI nunca devem reimplementar a mesma logica.
 
 ## Proxima fase recomendada
 
-Com os contratos de provider PDF, o `PDFTechnicalInspector` e a geometria
-canonica concluidos, a proxima etapa natural e a Fase 3.4: recursos, objetos e
-content streams.
+Com recursos, objetos e content streams mapeados, a proxima etapa natural e a
+Fase 3.5: fontes e tipografia.
 
 Veja o contexto detalhado em
 [block-3-native-pdf-scene.md](block-3-native-pdf-scene.md).

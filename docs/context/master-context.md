@@ -136,6 +136,9 @@ fidelidade/editabilidade, sem executar decomposicao visual ou extracao granular.
 Tambem ja existe uma geometria canonica compartilhada em `eixo.geometry`, com
 origem no canto superior esquerdo, eixo Y para baixo, unidade em points,
 matrizes afins e coordenadas normalizadas.
+O inventario interno de PDF tambem foi iniciado com grafo de objetos,
+referencias, content streams, catalogo de recursos e matriz de suporte do
+provider, preparando a Fase 3.5 de fontes e tipografia.
 
 Detalhes oficiais do bloco estao em
 [block-3-native-pdf-scene.md](../roadmap/block-3-native-pdf-scene.md).

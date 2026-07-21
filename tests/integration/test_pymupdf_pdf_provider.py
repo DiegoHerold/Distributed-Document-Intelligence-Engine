@@ -14,6 +14,8 @@ from eixo import (
     InvalidPDFPasswordError,
     PDFInspectionOptions,
     PDFInspectionState,
+    PDFInternalMappingOptions,
+    PDFMappingStatus,
     PDFOpenOptions,
     PDFPasswordRequiredError,
     PDFProbeOptions,
@@ -21,6 +23,7 @@ from eixo import (
     PDFProviderSettings,
     PDFProviderUnavailableError,
     PDFResourceLimitExceededError,
+    PDFResourceType,
     PDFSecurityStatus,
     PDFTechnicalProfile,
 )
@@ -213,6 +216,60 @@ def test_document_engine_runs_pdf_technical_inspection_with_fake_backend() -> No
     asyncio.run(run())
 
 
+def test_pymupdf_provider_maps_internal_structure_with_fake_backend() -> None:
+    async def run() -> None:
+        provider = PyMuPDFPDFProvider(_backend=FakePyMuPDFBackend())
+        source = DocumentSource.from_bytes(PDF_BYTES, filename="structure.pdf")
+
+        async with await provider.open(source) as document:
+            artifact = await document.get_internal_structure(
+                PDFInternalMappingOptions(max_objects=20)
+            )
+
+        assert artifact.object_graph.object_by_id("pdfobj:8:0") is not None
+        assert artifact.pages[0].content_streams[0].stream_reference.stream_id == (
+            "pdfstream:10:0"
+        )
+        assert artifact.pages[0].content_streams[0].operations_available == (
+            PDFMappingStatus.UNSUPPORTED_BY_PROVIDER
+        )
+        assert len(artifact.resource_catalog.fonts) == 1
+        assert artifact.resource_catalog.fonts[0].base_font == "Helvetica"
+        assert len(artifact.resource_catalog.images) == 1
+        assert artifact.resource_catalog.images[0].width == 64
+        assert len(artifact.resource_catalog.masks) == 1
+        assert len(artifact.resource_catalog.xobjects) == 1
+        assert artifact.resource_catalog.xobjects[0].reference.resource_type == (
+            PDFResourceType.FORM_XOBJECT
+        )
+        assert artifact.object_graph.relations_from("pdfstream:10:0")
+        assert artifact.capability_matrix
+        assert "FakeDocument" not in str(artifact.to_dict())
+
+    asyncio.run(run())
+
+
+def test_document_engine_maps_pdf_internal_structure_with_fake_backend() -> None:
+    async def run() -> None:
+        provider = PyMuPDFPDFProvider(_backend=FakePyMuPDFBackend())
+        engine = DocumentEngine.local(
+            pdf_providers=(provider,),
+            pdf=PDFProviderSettings(default_provider=PYMUPDF_PROVIDER_ID),
+        )
+
+        try:
+            artifact = await engine.map_pdf_internal_structure(
+                DocumentSource.from_bytes(PDF_BYTES, filename="engine-structure.pdf")
+            )
+        finally:
+            await engine.shutdown()
+
+        assert artifact.resource_catalog.get("pdffont:pdfobj:8:0") is not None
+        assert artifact.pages[0].page_reference.page_number == 1
+
+    asyncio.run(run())
+
+
 @dataclass(slots=True)
 class FakeRect:
     x0: float
@@ -235,7 +292,20 @@ class FakePage:
 
     def get_images(self, *, full: bool) -> list[tuple[str]]:
         assert full is True
-        return [("img",)]
+        return [(9, 12, 64, 32, 8, "DeviceRGB", "", "Im0", "DCTDecode", 0)]
+
+    def get_fonts(self, *, full: bool) -> list[tuple[object, ...]]:
+        assert full is True
+        return [(8, "n/a", "Type1", "Helvetica", "F1", "WinAnsiEncoding")]
+
+    def get_xobjects(self) -> list[tuple[object, ...]]:
+        return [(11, "Fm0", "Form", 0, 0, 100, 100)]
+
+    def get_contents(self) -> list[int]:
+        return [10]
+
+    def get_unknown_resources(self) -> list[tuple[str, str]]:
+        return [("ProcSet", "PDF/Text")]
 
     def get_drawings(self) -> list[dict[str, str]]:
         return [{"type": "path"}]
@@ -293,3 +363,29 @@ class FakeDocument:
 
     def close(self) -> None:
         self.closed = True
+
+    def xref_length(self) -> int:
+        return 13
+
+    def xref_object(self, xref: int, compressed: bool = False) -> str:
+        values = {
+            1: "<< /Type /Catalog /Pages 2 0 R >>",
+            2: "<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+            3: "<< /Type /Page /Resources << /Font << /F1 8 0 R >> >> >>",
+            8: "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>",
+            9: "<< /Type /XObject /Subtype /Image /Width 64 /Height 32 >>",
+            10: "<< /Length 24 /Filter /FlateDecode >> stream",
+            11: "<< /Type /XObject /Subtype /Form /BBox [0 0 100 100] >> stream",
+            12: "<< /Type /XObject /Subtype /Image /ImageMask true >>",
+        }
+        return values.get(xref, "<< >>")
+
+    def xref_is_stream(self, xref: int) -> bool:
+        return xref in {10, 11}
+
+    def xref_get_key(self, xref: int, key: str) -> tuple[str, str]:
+        if xref == 10 and key in {"Length", "/Length"}:
+            return ("int", "24")
+        if xref == 10 and key == "Filter":
+            return ("name", "/FlateDecode")
+        return ("null", "null")

@@ -119,6 +119,22 @@ transformed = box.transform(AffineMatrix.rotation(90.0))
 Canonical geometry uses top-left origin, X to the right, Y downward, absolute
 units in points and positive clockwise rotation.
 
+## PDF Internal Structure
+
+Fase 3.4 exposes a diagnostic internal PDF map:
+
+```python
+artifact = await engine.map_pdf_internal_structure(source)
+
+fonts = artifact.resource_catalog.fonts
+streams = artifact.pages[0].content_streams
+relations = artifact.object_graph.relations
+```
+
+The artifact preserves object references, content stream sequence, resource
+catalogs, provider limitations and provenance. It does not extract full text,
+image bytes, vectors or visual scene elements.
+
 Install the backend only when needed:
 
 ```bash

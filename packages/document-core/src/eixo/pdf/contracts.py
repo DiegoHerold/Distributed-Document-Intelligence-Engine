@@ -4,6 +4,7 @@ from typing import Protocol, runtime_checkable
 
 from eixo.core import DocumentSource
 from eixo.pdf.inspection import PDFInspectionOptions, PDFTechnicalInspection
+from eixo.pdf.structure import PDFInternalMappingOptions, PDFInternalStructureArtifact
 from eixo.pdf.models import (
     PDFBasicInfo,
     PDFOpenOptions,
@@ -108,8 +109,26 @@ class PDFTechnicalInspector(Protocol):
         ...
 
 
+@runtime_checkable
+class PDFInternalStructureMapper(Protocol):
+    async def map(
+        self,
+        source: DocumentSource,
+        options: PDFInternalMappingOptions | None = None,
+    ) -> PDFInternalStructureArtifact:
+        ...
+
+    async def map_document(
+        self,
+        document: PDFDocumentHandle,
+        options: PDFInternalMappingOptions | None = None,
+    ) -> PDFInternalStructureArtifact:
+        ...
+
+
 __all__ = [
     "PDFDocumentHandle",
+    "PDFInternalStructureMapper",
     "PDFPageHandle",
     "PDFProvider",
     "PDFTechnicalInspector",

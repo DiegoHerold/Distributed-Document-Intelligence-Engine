@@ -137,6 +137,10 @@ inspector over the registered provider registry and returns
 `PDFTechnicalInspection`. This is a specialized diagnostic API for native PDF
 work; the generic `inspect()` and `parse()` flows remain capability-backed.
 
+`map_pdf_internal_structure(source, options=PDFInternalMappingOptions(...))`
+returns `PDFInternalStructureArtifact`, preserving the PDF object graph, content
+stream sequence, resource catalog, limitations and provenance.
+
 ## Current limitation
 
 No real PDF, Excel, OCR, rendering, layout, template or semantic capability exists yet. Without registered capabilities, public methods preserve and propagate `CapabilityNotFoundError`.

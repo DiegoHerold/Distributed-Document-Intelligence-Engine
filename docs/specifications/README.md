@@ -4,7 +4,8 @@ Esta pasta deve conter contratos publicos, modelos, schemas, OpenAPI, eventos e 
 
 ## Estado atual
 
-Nenhuma especificacao tecnica foi criada na fase 0 de governanca. O roadmap posiciona contratos publicos e modelos iniciais no Bloco 1.
+As especificacoes tecnicas iniciais ja cobrem contratos publicos, runtime,
+API, capacidades e os artefatos PDF criados no Bloco 3.
 
 ## Proximos documentos esperados
 
@@ -21,3 +22,5 @@ Nenhuma especificacao tecnica foi criada na fase 0 de governanca. O roadmap posi
 - [capabilities-and-providers.md](capabilities-and-providers.md)
 - [execution-runtime.md](execution-runtime.md)
 - [api-v1.md](api-v1.md)
+- [pdf-resource-catalog.md](pdf-resource-catalog.md)
+- [pdf-paint-order.md](pdf-paint-order.md)

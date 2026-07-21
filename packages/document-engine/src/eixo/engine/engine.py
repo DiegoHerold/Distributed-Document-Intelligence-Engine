@@ -37,7 +37,11 @@ from eixo.core import (
 from eixo.plugins import Capability, CapabilityRegistry, ProviderDescriptor
 from eixo.pdf import PDFProvider, PDFProviderRegistry, PDFProviderSettings
 from eixo.pdf import (
+    DefaultPDFInternalStructureMapper,
     DefaultPDFTechnicalInspector,
+    PDFInternalMappingOptions,
+    PDFInternalStructureArtifact,
+    PDFInternalStructureMapper,
     PDFInspectionOptions,
     PDFTechnicalInspection,
     PDFTechnicalInspector,
@@ -56,6 +60,7 @@ class DocumentEngine:
     registry: CapabilityRegistry = field(default_factory=CapabilityRegistry)
     pdf_provider_registry: PDFProviderRegistry = field(default_factory=PDFProviderRegistry)
     pdf_technical_inspector: PDFTechnicalInspector | None = None
+    pdf_internal_structure_mapper: PDFInternalStructureMapper | None = None
     runtime: LocalRuntime = field(default_factory=LocalRuntime)
     inspect_document: InspectDocument | None = None
     parse_document: ParseDocument | None = None
@@ -80,6 +85,7 @@ class DocumentEngine:
         pdf_providers: tuple[PDFProvider, ...] = (),
         pdf_provider_registry: PDFProviderRegistry | None = None,
         pdf_technical_inspector: PDFTechnicalInspector | None = None,
+        pdf_internal_structure_mapper: PDFInternalStructureMapper | None = None,
         pdf: PDFProviderSettings | None = None,
         data_directory: str | Path | None = None,
         job_database_path: str | Path | None = None,
@@ -129,6 +135,10 @@ class DocumentEngine:
         technical_inspector = pdf_technical_inspector or DefaultPDFTechnicalInspector(
             pdf_registry
         )
+        internal_structure_mapper = (
+            pdf_internal_structure_mapper
+            or DefaultPDFInternalStructureMapper(pdf_registry)
+        )
         ingest_document = IngestDocument.local(
             engine_config.data_directory,
             security_policy=engine_config.security,
@@ -150,6 +160,7 @@ class DocumentEngine:
             registry=registry,
             pdf_provider_registry=pdf_registry,
             pdf_technical_inspector=technical_inspector,
+            pdf_internal_structure_mapper=internal_structure_mapper,
             runtime=runtime,
             inspect_document=InspectDocument(service),
             parse_document=ParseDocument(service),
@@ -248,6 +259,23 @@ class DocumentEngine:
             options,
         )
         self._log("engine.pdf_inspection.completed")
+        return result
+
+    async def map_pdf_internal_structure(
+        self,
+        source: DocumentInput,
+        *,
+        options: PDFInternalMappingOptions | None = None,
+    ) -> PDFInternalStructureArtifact:
+        await self._ensure_running()
+        if self.pdf_internal_structure_mapper is None:
+            raise ConfigurationError("PDF internal structure mapping is not available")
+        self._log("engine.pdf_structure_mapping.started")
+        result = await self.pdf_internal_structure_mapper.map(
+            self._source_from_input(source),
+            options,
+        )
+        self._log("engine.pdf_structure_mapping.completed")
         return result
 
     async def parse(

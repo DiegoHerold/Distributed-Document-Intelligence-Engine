@@ -13,6 +13,7 @@ from typing import BinaryIO, Protocol
 from eixo.application import LocalSourceResolver, ResolvedDocumentSource
 from eixo.core import (
     ClosedPDFDocumentError,
+    ContractVersion,
     CorruptedPDFError,
     DocumentSource,
     EixoWarning,
@@ -27,23 +28,46 @@ from eixo.core import (
 )
 from eixo.pdf import (
     PDFBasicInfo,
+    PDFContentStream,
+    PDFContentStreamReference,
     PDFDocumentHandle,
     PDFEncryptionState,
+    PDFFontResourceDescriptor,
+    PDFImageResourceDescriptor,
+    PDFIndirectObject,
+    PDFInternalMappingOptions,
+    PDFInternalPageMap,
+    PDFInternalStructureArtifact,
     PDFInspectionState,
+    PDFMappingStatus,
+    PDFObjectGraph,
+    PDFObjectReference,
+    PDFObjectRelation,
+    PDFObjectRelationType,
     PDFOpenOptions,
     PDFPageGeometry,
     PDFPageHandle,
+    PDFPageReference,
     PDFPageTechnicalHints,
     PDFProbeOptions,
     PDFProbeResult,
     PDFProbeStatus,
+    PDFProviderCapabilityMatrixEntry,
     PDFProviderCapabilities,
     PDFProviderDescriptor,
     PDFProviderProvenance,
+    PDFProviderSupportStatus,
+    PDFResourceCatalog,
+    PDFResourceReference,
+    PDFResourceScope,
+    PDFResourceType,
+    PDFUnknownResource,
+    PDFXObjectResource,
     PDFProviderRegistry,
     PDFSupportLevel,
     ProviderLimitation,
     canonical_pdf_page_geometry,
+    resource_id,
 )
 
 logger = logging.getLogger(__name__)
@@ -119,9 +143,9 @@ class PyMuPDFPDFProvider:
             supports_annotations=PDFSupportLevel.UNSUPPORTED,
             supports_forms=PDFSupportLevel.UNSUPPORTED,
             supports_layers=PDFSupportLevel.UNSUPPORTED,
-            supports_content_streams=PDFSupportLevel.UNSUPPORTED,
-            supports_object_references=PDFSupportLevel.UNSUPPORTED,
-            supports_embedded_fonts=PDFSupportLevel.UNSUPPORTED,
+            supports_content_streams=PDFSupportLevel.PARTIAL,
+            supports_object_references=PDFSupportLevel.PARTIAL,
+            supports_embedded_fonts=PDFSupportLevel.PARTIAL,
             supports_rendering=PDFSupportLevel.UNSUPPORTED,
         )
 
@@ -379,6 +403,15 @@ class PyMuPDFPDFDocumentHandle:
     def _ensure_open(self) -> None:
         if self._closed:
             raise ClosedPDFDocumentError("PDF document handle is closed")
+
+    async def get_internal_structure(
+        self,
+        options: PDFInternalMappingOptions | None = None,
+    ) -> PDFInternalStructureArtifact:
+        self._ensure_open()
+        opts = options or PDFInternalMappingOptions()
+        async with self._lock:
+            return await asyncio.to_thread(_internal_structure_from_document, self, opts)
 
 
 @dataclass(slots=True)
@@ -675,6 +708,511 @@ def _technical_hints_from_page(page: object) -> PDFPageTechnicalHints:
     )
 
 
+def _internal_structure_from_document(
+    handle: PyMuPDFPDFDocumentHandle,
+    options: PDFInternalMappingOptions,
+) -> PDFInternalStructureArtifact:
+    descriptor = handle.descriptor
+    pages: list[PDFInternalPageMap] = []
+    fonts: dict[str, PDFFontResourceDescriptor] = {}
+    images: dict[str, PDFImageResourceDescriptor] = {}
+    masks: dict[str, PDFImageResourceDescriptor] = {}
+    xobjects: dict[str, PDFXObjectResource] = {}
+    unknown: dict[str, PDFUnknownResource] = {}
+    objects: list[PDFIndirectObject] = []
+    relations: list[PDFObjectRelation] = []
+    content_stream_count = 0
+    if options.include_indirect_objects:
+        objects.extend(_indirect_objects(handle, options))
+    object_ids = {item.object_id for item in objects}
+    for page_index in range(handle.page_count):
+        page = handle.document.load_page(page_index)
+        page_reference = PDFPageReference(
+            page_index=page_index,
+            page_number=page_index + 1,
+            object_reference=_page_object_reference(page),
+            provider_reference=f"page:{page_index}",
+        )
+        streams = _content_streams(handle, page, page_reference, options)
+        content_stream_count += len(streams)
+        resources = _page_resources(
+            handle,
+            page,
+            page_reference,
+            fonts=fonts,
+            images=images,
+            masks=masks,
+            xobjects=xobjects,
+            unknown=unknown,
+            options=options,
+        )
+        for stream in streams:
+            for resource in resources:
+                relations.append(
+                    PDFObjectRelation(
+                        source_id=stream.stream_reference.stream_id,
+                        target_id=resource.resource_id,
+                        relation_type=PDFObjectRelationType.USES_RESOURCE,
+                    )
+                )
+        if page_reference.object_reference is not None:
+            object_ids.add(page_reference.object_reference.stable_id)
+        pages.append(
+            PDFInternalPageMap(
+                page_reference=page_reference,
+                own_resources=resources,
+                content_streams=streams,
+                operation_references=tuple(
+                    operation.operation_reference
+                    for stream in streams
+                    for operation in stream.operations
+                ),
+                provenance=_provenance(
+                    descriptor,
+                    operation="map_internal_structure.page",
+                    source=handle.resolved,
+                    options=options.safe_options(),
+                    page_index=page_index,
+                ),
+            )
+        )
+    for relation in relations:
+        if relation.source_id.startswith("pdfobj") and relation.source_id not in object_ids:
+            objects.append(
+                PDFIndirectObject(
+                    reference=PDFObjectReference(provider_reference=relation.source_id),
+                    object_id=relation.source_id,
+                    status=PDFMappingStatus.UNRESOLVED,
+                )
+            )
+    return PDFInternalStructureArtifact(
+        artifact_version=ContractVersion("1.0.0"),
+        provider=descriptor,
+        object_graph=PDFObjectGraph(objects=tuple(objects), relations=tuple(relations)),
+        resource_catalog=PDFResourceCatalog(
+            fonts=tuple(fonts.values()),
+            images=tuple(images.values()),
+            masks=tuple(masks.values()),
+            xobjects=tuple(xobjects.values()),
+            unknown_resources=tuple(unknown.values()),
+        ),
+        pages=tuple(pages),
+        capability_matrix=_structure_capability_matrix(content_stream_count),
+        warnings=(
+            EixoWarning(
+                code="pdf.structure.operations_unavailable",
+                message="PyMuPDF mapping does not expose raw content stream operations.",
+            ),
+        ),
+        limitations=descriptor.limitations
+        + (
+            ProviderLimitation(
+                code="content_operations_unavailable",
+                message="Content stream operators are not decoded in this phase.",
+                scope="content_stream",
+            ),
+            ProviderLimitation(
+                code="paint_order_provider_approximation",
+                message="Paint order is limited to content stream/resource order hints.",
+                scope="page",
+            ),
+        ),
+        provenance=_provenance(
+            descriptor,
+            operation="map_internal_structure",
+            source=handle.resolved,
+            options=options.safe_options(),
+        ),
+    )
+
+
+def _indirect_objects(
+    handle: PyMuPDFPDFDocumentHandle,
+    options: PDFInternalMappingOptions,
+) -> tuple[PDFIndirectObject, ...]:
+    xref_length = _call_int(handle.document, "xref_length")
+    if xref_length is None:
+        return ()
+    limit = min(xref_length, (options.max_objects or xref_length) + 1)
+    objects: list[PDFIndirectObject] = []
+    for xref in range(1, limit):
+        reference = PDFObjectReference(object_number=xref, generation_number=0, xref=xref)
+        summary = _object_summary(handle.document, xref, options.max_raw_summary_size)
+        objects.append(
+            PDFIndirectObject(
+                reference=reference,
+                object_id=reference.stable_id,
+                object_type=summary.get("Type"),
+                subtype=summary.get("Subtype"),
+                dictionary_summary=summary,
+                has_stream=_has_stream(handle.document, xref),
+                status=PDFMappingStatus.RESOLVED,
+                provenance=_provenance(
+                    handle.descriptor,
+                    operation="map_internal_structure.object",
+                    source=handle.resolved,
+                    options=options.safe_options(),
+                ),
+            )
+        )
+    return tuple(objects)
+
+
+def _content_streams(
+    handle: PyMuPDFPDFDocumentHandle,
+    page: object,
+    page_reference: PDFPageReference,
+    options: PDFInternalMappingOptions,
+) -> tuple[PDFContentStream, ...]:
+    if not options.include_content_streams:
+        return ()
+    contents = _call(page, "get_contents")
+    if contents is None:
+        return ()
+    if isinstance(contents, int):
+        values = (contents,)
+    else:
+        try:
+            values = tuple(int(value) for value in contents)
+        except TypeError:
+            values = ()
+    streams: list[PDFContentStream] = []
+    for stream_index, xref in enumerate(values):
+        object_reference = PDFObjectReference(
+            object_number=xref,
+            generation_number=0,
+            xref=xref,
+        )
+        stream_reference = PDFContentStreamReference(
+            stream_id=f"pdfstream:{xref}:0",
+            page_reference=page_reference,
+            object_reference=object_reference,
+            stream_index=stream_index,
+        )
+        streams.append(
+            PDFContentStream(
+                stream_reference=stream_reference,
+                byte_length=_stream_length(handle.document, xref),
+                filter_chain=_filter_chain(handle.document, xref),
+                decoded_available=PDFMappingStatus.PARTIALLY_RECOVERED,
+                operations_available=PDFMappingStatus.UNSUPPORTED_BY_PROVIDER,
+                operation_count=0,
+                provenance=_provenance(
+                    handle.descriptor,
+                    operation="map_internal_structure.content_stream",
+                    source=handle.resolved,
+                    options=options.safe_options(),
+                    page_index=page_reference.page_index,
+                ),
+            )
+        )
+    return tuple(streams)
+
+
+def _page_resources(
+    handle: PyMuPDFPDFDocumentHandle,
+    page: object,
+    page_reference: PDFPageReference,
+    *,
+    fonts: dict[str, PDFFontResourceDescriptor],
+    images: dict[str, PDFImageResourceDescriptor],
+    masks: dict[str, PDFImageResourceDescriptor],
+    xobjects: dict[str, PDFXObjectResource],
+    unknown: dict[str, PDFUnknownResource],
+    options: PDFInternalMappingOptions,
+) -> tuple[PDFResourceReference, ...]:
+    if not options.include_resources:
+        return ()
+    resources: list[PDFResourceReference] = []
+    for font in _safe_sequence_call(page, "get_fonts", full=True):
+        reference = _font_resource(handle, font, page_reference)
+        fonts.setdefault(reference.reference.resource_id, reference)
+        resources.append(reference.reference)
+    for image in _safe_sequence_call(page, "get_images", full=True):
+        reference = _image_resource(handle, image, page_reference)
+        images.setdefault(reference.reference.resource_id, reference)
+        resources.append(reference.reference)
+        mask_reference = reference.soft_mask_reference or reference.mask_reference
+        if mask_reference is not None:
+            masks.setdefault(
+                mask_reference.resource_id,
+                _mask_resource(handle, reference, mask_reference, page_reference),
+            )
+            resources.append(mask_reference)
+    for xobject in _safe_sequence_call(page, "get_xobjects"):
+        reference = _xobject_resource(handle, xobject, page_reference)
+        xobjects.setdefault(reference.reference.resource_id, reference)
+        resources.append(reference.reference)
+    for item in _safe_sequence_call(page, "get_unknown_resources"):
+        reference = _unknown_resource(handle, item, page_reference)
+        unknown.setdefault(reference.reference.resource_id, reference)
+        resources.append(reference.reference)
+    return tuple(resources)
+
+
+def _font_resource(
+    handle: PyMuPDFPDFDocumentHandle,
+    item: object,
+    page_reference: PDFPageReference,
+) -> PDFFontResourceDescriptor:
+    values = _tuple(item)
+    xref = _int_at(values, 0)
+    font_type = _str_at(values, 2)
+    base_font = _str_at(values, 3)
+    resource_name = _str_at(values, 4) or base_font
+    object_reference = _object_reference_from_xref(xref)
+    reference = PDFResourceReference(
+        resource_id=resource_id(
+            PDFResourceType.FONT,
+            PDFResourceScope.PAGE,
+            resource_name=resource_name,
+            object_reference=object_reference,
+            page_index=page_reference.page_index,
+        ),
+        resource_type=PDFResourceType.FONT,
+        scope=PDFResourceScope.PAGE,
+        resource_name=resource_name,
+        page_reference=page_reference,
+        object_reference=object_reference,
+    )
+    return PDFFontResourceDescriptor(
+        reference=reference,
+        status=PDFMappingStatus.RESOLVED,
+        object_reference=object_reference,
+        pages_using_resource=(page_reference,),
+        font_subtype=font_type,
+        base_font=base_font,
+        dictionary_summary=_resource_summary("font", values),
+        provenance=_provenance(
+            handle.descriptor,
+            operation="map_internal_structure.font",
+            source=handle.resolved,
+            options={},
+            page_index=page_reference.page_index,
+        ),
+    )
+
+
+def _image_resource(
+    handle: PyMuPDFPDFDocumentHandle,
+    item: object,
+    page_reference: PDFPageReference,
+) -> PDFImageResourceDescriptor:
+    values = _tuple(item)
+    xref = _int_at(values, 0)
+    smask = _int_at(values, 1)
+    width = _int_at(values, 2)
+    height = _int_at(values, 3)
+    bpc = _int_at(values, 4)
+    color_space = _str_at(values, 5)
+    resource_name = _str_at(values, 7) or f"image-{xref or page_reference.page_index}"
+    object_reference = _object_reference_from_xref(xref)
+    reference = PDFResourceReference(
+        resource_id=resource_id(
+            PDFResourceType.IMAGE,
+            PDFResourceScope.PAGE,
+            resource_name=resource_name,
+            object_reference=object_reference,
+            page_index=page_reference.page_index,
+        ),
+        resource_type=PDFResourceType.IMAGE,
+        scope=PDFResourceScope.PAGE,
+        resource_name=resource_name,
+        page_reference=page_reference,
+        object_reference=object_reference,
+    )
+    mask_reference = None
+    if smask and smask > 0:
+        mask_object = _object_reference_from_xref(smask)
+        mask_reference = PDFResourceReference(
+            resource_id=resource_id(
+                PDFResourceType.MASK,
+                PDFResourceScope.PAGE,
+                resource_name=f"{resource_name}-smask",
+                object_reference=mask_object,
+                page_index=page_reference.page_index,
+            ),
+            resource_type=PDFResourceType.MASK,
+            scope=PDFResourceScope.PAGE,
+            resource_name=f"{resource_name}-smask",
+            page_reference=page_reference,
+            object_reference=mask_object,
+            parent_reference=reference.resource_id,
+        )
+    return PDFImageResourceDescriptor(
+        reference=reference,
+        status=PDFMappingStatus.RESOLVED,
+        object_reference=object_reference,
+        pages_using_resource=(page_reference,),
+        width=width,
+        height=height,
+        bits_per_component=bpc,
+        filter_chain=(_str_at(values, 8),) if _str_at(values, 8) else (),
+        soft_mask_reference=mask_reference,
+        dictionary_summary={
+            "kind": "image",
+            "color_space": color_space or "",
+        },
+        provenance=_provenance(
+            handle.descriptor,
+            operation="map_internal_structure.image",
+            source=handle.resolved,
+            options={},
+            page_index=page_reference.page_index,
+        ),
+    )
+
+
+def _mask_resource(
+    handle: PyMuPDFPDFDocumentHandle,
+    image: PDFImageResourceDescriptor,
+    mask_reference: PDFResourceReference,
+    page_reference: PDFPageReference,
+) -> PDFImageResourceDescriptor:
+    return PDFImageResourceDescriptor(
+        reference=mask_reference,
+        status=PDFMappingStatus.PARTIALLY_RECOVERED,
+        object_reference=mask_reference.object_reference,
+        pages_using_resource=(page_reference,),
+        dictionary_summary={"kind": "soft_mask"},
+        provenance=_provenance(
+            handle.descriptor,
+            operation="map_internal_structure.mask",
+            source=handle.resolved,
+            options={},
+            page_index=page_reference.page_index,
+        ),
+    )
+
+
+def _xobject_resource(
+    handle: PyMuPDFPDFDocumentHandle,
+    item: object,
+    page_reference: PDFPageReference,
+) -> PDFXObjectResource:
+    values = _tuple(item)
+    xref = _int_at(values, 0)
+    resource_name = _str_at(values, 1) or f"xobject-{xref or page_reference.page_index}"
+    xobject_type = _str_at(values, 2)
+    object_reference = _object_reference_from_xref(xref)
+    reference = PDFResourceReference(
+        resource_id=resource_id(
+            PDFResourceType.FORM_XOBJECT
+            if xobject_type == "Form"
+            else PDFResourceType.XOBJECT,
+            PDFResourceScope.PAGE,
+            resource_name=resource_name,
+            object_reference=object_reference,
+            page_index=page_reference.page_index,
+        ),
+        resource_type=PDFResourceType.FORM_XOBJECT
+        if xobject_type == "Form"
+        else PDFResourceType.XOBJECT,
+        scope=PDFResourceScope.PAGE,
+        resource_name=resource_name,
+        page_reference=page_reference,
+        object_reference=object_reference,
+    )
+    return PDFXObjectResource(
+        reference=reference,
+        status=PDFMappingStatus.RESOLVED,
+        object_reference=object_reference,
+        pages_using_resource=(page_reference,),
+        xobject_type=xobject_type,
+        dictionary_summary=_resource_summary("xobject", values),
+        provenance=_provenance(
+            handle.descriptor,
+            operation="map_internal_structure.xobject",
+            source=handle.resolved,
+            options={},
+            page_index=page_reference.page_index,
+        ),
+    )
+
+
+def _unknown_resource(
+    handle: PyMuPDFPDFDocumentHandle,
+    item: object,
+    page_reference: PDFPageReference,
+) -> PDFUnknownResource:
+    values = _tuple(item)
+    declared_type = _str_at(values, 0) or "unknown"
+    resource_name = _str_at(values, 1) or declared_type
+    reference = PDFResourceReference(
+        resource_id=resource_id(
+            PDFResourceType.UNKNOWN,
+            PDFResourceScope.PAGE,
+            resource_name=resource_name,
+            page_index=page_reference.page_index,
+        ),
+        resource_type=PDFResourceType.UNKNOWN,
+        scope=PDFResourceScope.PAGE,
+        resource_name=resource_name,
+        page_reference=page_reference,
+    )
+    return PDFUnknownResource(
+        reference=reference,
+        status=PDFMappingStatus.PARTIALLY_RECOVERED,
+        pages_using_resource=(page_reference,),
+        declared_type=declared_type,
+        reason="provider_reported_unknown_resource",
+        dictionary_summary=_resource_summary("unknown", values),
+        provenance=_provenance(
+            handle.descriptor,
+            operation="map_internal_structure.unknown_resource",
+            source=handle.resolved,
+            options={},
+            page_index=page_reference.page_index,
+        ),
+    )
+
+
+def _structure_capability_matrix(
+    content_stream_count: int,
+) -> tuple[PDFProviderCapabilityMatrixEntry, ...]:
+    return (
+        PDFProviderCapabilityMatrixEntry(
+            feature="indirect_objects",
+            support=PDFProviderSupportStatus.PARTIAL,
+            strategy="xref_length_and_xref_object_when_available",
+        ),
+        PDFProviderCapabilityMatrixEntry(
+            feature="content_streams",
+            support=PDFProviderSupportStatus.PARTIAL
+            if content_stream_count
+            else PDFProviderSupportStatus.UNKNOWN,
+            strategy="page_get_contents",
+        ),
+        PDFProviderCapabilityMatrixEntry(
+            feature="content_operations",
+            support=PDFProviderSupportStatus.UNSUPPORTED,
+            strategy="operations_deferred_to_later_phase",
+            limitation="raw_operator_sequence_not_exposed",
+        ),
+        PDFProviderCapabilityMatrixEntry(
+            feature="fonts",
+            support=PDFProviderSupportStatus.PARTIAL,
+            strategy="page_get_fonts",
+        ),
+        PDFProviderCapabilityMatrixEntry(
+            feature="images",
+            support=PDFProviderSupportStatus.PARTIAL,
+            strategy="page_get_images",
+        ),
+        PDFProviderCapabilityMatrixEntry(
+            feature="xobjects",
+            support=PDFProviderSupportStatus.PARTIAL,
+            strategy="page_get_xobjects_when_available",
+        ),
+        PDFProviderCapabilityMatrixEntry(
+            feature="paint_order",
+            support=PDFProviderSupportStatus.PARTIAL,
+            strategy="content_stream_order_only",
+            limitation="operation_order_unavailable",
+        ),
+    )
+
+
 _UNSUPPORTED_COUNT = -1
 
 
@@ -713,6 +1251,140 @@ def _state_from_optional_count(count: int | None) -> PDFInspectionState:
     if count is None:
         return PDFInspectionState.UNKNOWN
     return PDFInspectionState.PRESENT if count > 0 else PDFInspectionState.ABSENT
+
+
+def _call(owner: object, method_name: str, *args: object, **kwargs: object) -> object | None:
+    method = getattr(owner, method_name, None)
+    if method is None:
+        return None
+    try:
+        return method(*args, **kwargs)
+    except Exception:
+        return None
+
+
+def _call_int(owner: object, method_name: str) -> int | None:
+    value = _call(owner, method_name)
+    try:
+        return int(value) if value is not None else None
+    except (TypeError, ValueError):
+        return None
+
+
+def _safe_sequence_call(
+    owner: object,
+    method_name: str,
+    *args: object,
+    **kwargs: object,
+) -> tuple[object, ...]:
+    value = _call(owner, method_name, *args, **kwargs)
+    if value is None:
+        return ()
+    try:
+        return tuple(value)  # type: ignore[arg-type]
+    except TypeError:
+        return (value,)
+
+
+def _tuple(value: object) -> tuple[object, ...]:
+    if isinstance(value, tuple):
+        return value
+    if isinstance(value, list):
+        return tuple(value)
+    if isinstance(value, dict):
+        return tuple(value.values())
+    return (value,)
+
+
+def _int_at(values: tuple[object, ...], index: int) -> int | None:
+    if index >= len(values):
+        return None
+    try:
+        return int(values[index])
+    except (TypeError, ValueError):
+        return None
+
+
+def _str_at(values: tuple[object, ...], index: int) -> str | None:
+    if index >= len(values):
+        return None
+    value = values[index]
+    if value is None:
+        return None
+    text = str(value).strip()
+    return text or None
+
+
+def _object_reference_from_xref(xref: int | None) -> PDFObjectReference | None:
+    if xref is None or xref <= 0:
+        return None
+    return PDFObjectReference(object_number=xref, generation_number=0, xref=xref)
+
+
+def _page_object_reference(page: object) -> PDFObjectReference | None:
+    for name in ("xref", "xref_id"):
+        value = getattr(page, name, None)
+        if value is not None:
+            try:
+                return _object_reference_from_xref(int(value))
+            except (TypeError, ValueError):
+                return None
+    return None
+
+
+def _object_summary(
+    document: object,
+    xref: int,
+    max_size: int,
+) -> dict[str, str]:
+    raw = _call(document, "xref_object", xref, compressed=False)
+    if raw is None:
+        return {}
+    text = str(raw)
+    if len(text) > max_size:
+        text = f"{text[:max_size]}...<truncated>"
+    summary: dict[str, str] = {"raw_summary": text}
+    for key in ("Type", "Subtype"):
+        marker = f"/{key}"
+        index = text.find(marker)
+        if index >= 0:
+            value = text[index + len(marker) :].strip().split(maxsplit=1)[0]
+            summary[key] = value.strip("/[]<>()")
+    return summary
+
+
+def _has_stream(document: object, xref: int) -> bool:
+    if hasattr(document, "xref_is_stream"):
+        value = _call(document, "xref_is_stream", xref)
+        return bool(value)
+    raw = _call(document, "xref_object", xref, compressed=False)
+    return "stream" in str(raw) if raw is not None else False
+
+
+def _stream_length(document: object, xref: int) -> int | None:
+    for key in ("Length", "/Length"):
+        value = _call(document, "xref_get_key", xref, key)
+        if isinstance(value, tuple) and len(value) >= 2:
+            try:
+                return int(str(value[1]).strip())
+            except ValueError:
+                return None
+    return None
+
+
+def _filter_chain(document: object, xref: int) -> tuple[str, ...]:
+    value = _call(document, "xref_get_key", xref, "Filter")
+    if isinstance(value, tuple) and len(value) >= 2:
+        text = str(value[1]).replace("[", " ").replace("]", " ")
+        return tuple(part.strip("/") for part in text.split() if part.strip())
+    return ()
+
+
+def _resource_summary(kind: str, values: tuple[object, ...]) -> dict[str, str]:
+    return {
+        "kind": kind,
+        "provider_tuple": "|".join(str(value) for value in values[:12]),
+    }
 
 
 def _backend_version(backend: object | None) -> str | None:

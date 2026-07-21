@@ -154,6 +154,8 @@ PyMuPDF e `PDFTechnicalInspector`. Ver
 
 ### 3.4 - Recursos, objetos e content streams
 
+Status: concluida.
+
 Construir inventario tecnico de objetos indiretos, referencias internas,
 paginas, content streams, XObjects, Form XObjects, fontes, imagens, mascaras,
 ExtGState, color spaces, patterns, shadings, clipping paths, recursos herdados,
@@ -171,6 +173,11 @@ Referencias proprias do Eixo:
 Quando possivel, preservar `content_stream_index`, `operation_index`,
 `paint_order` e `z_order`. Ordem logica de leitura, ordem nativa do provider,
 ordem grafica de desenho e ordem normalizada posterior nao sao equivalentes.
+
+Entrega implementada: `PDFInternalStructureArtifact`, `PDFObjectGraph`,
+`PDFResourceCatalog`, referencias internas, content streams, recursos iniciais
+e mapper best effort do provider PyMuPDF. Ver
+[pdf-object-model.md](../architecture/pdf-object-model.md).
 
 ### 3.5 - Fontes e tipografia
 

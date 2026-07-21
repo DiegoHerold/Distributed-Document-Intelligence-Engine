@@ -16,17 +16,21 @@ Este diretorio organiza o contexto, a arquitetura, as decisoes, o roadmap e os d
 10. [Contratos e provider nativo de PDF](architecture/pdf-provider-contracts.md)
 11. [PDF Technical Inspector](architecture/pdf-technical-inspector.md)
 12. [Geometria canonica](architecture/canonical-geometry.md)
-13. [Bloco 3 - Decomposicao nativa e cena visual de PDF](roadmap/block-3-native-pdf-scene.md)
-14. [Roadmap](roadmap/README.md)
-15. [Indice oficial de fases](roadmap/phases/README.md)
-16. [Decisoes arquiteturais](decisions/README.md)
-17. [Guia para agentes](../AGENTS.md)
-18. [Uso como biblioteca Python](guides/using-as-library.md)
-19. [Uso da API REST](guides/using-the-api.md)
-20. [Uso da CLI](guides/cli.md)
-21. [Manuseio seguro de arquivos](guides/safe-file-handling.md)
-22. [Testes de paridade](testing/parity-tests.md)
-23. [Arquivo historico](archive/README.md), quando for necessario auditar a origem das decisoes
+13. [PDF Object Model](architecture/pdf-object-model.md)
+14. [Catalogo de recursos PDF](specifications/pdf-resource-catalog.md)
+15. [Ordem de pintura PDF](specifications/pdf-paint-order.md)
+16. [Capacidades do provider PDF](providers/pdf-provider-capabilities.md)
+17. [Bloco 3 - Decomposicao nativa e cena visual de PDF](roadmap/block-3-native-pdf-scene.md)
+18. [Roadmap](roadmap/README.md)
+19. [Indice oficial de fases](roadmap/phases/README.md)
+20. [Decisoes arquiteturais](decisions/README.md)
+21. [Guia para agentes](../AGENTS.md)
+22. [Uso como biblioteca Python](guides/using-as-library.md)
+23. [Uso da API REST](guides/using-the-api.md)
+24. [Uso da CLI](guides/cli.md)
+25. [Manuseio seguro de arquivos](guides/safe-file-handling.md)
+26. [Testes de paridade](testing/parity-tests.md)
+27. [Arquivo historico](archive/README.md), quando for necessario auditar a origem das decisoes
 
 ## Estrutura
 
@@ -43,6 +47,7 @@ docs/
 |   `-- persistent-local-jobs.md
 |-- decisions/
 |-- specifications/
+|-- providers/
 |-- roadmap/
 |   |-- block-3-native-pdf-scene.md
 |   `-- phases/
