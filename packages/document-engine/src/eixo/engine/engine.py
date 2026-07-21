@@ -35,6 +35,7 @@ from eixo.core import (
     ValidationError,
 )
 from eixo.plugins import Capability, CapabilityRegistry, ProviderDescriptor
+from eixo.pdf import PDFProvider, PDFProviderRegistry, PDFProviderSettings
 from eixo.runtime.local import LocalRuntime, LocalRuntimeConfig
 from eixo.engine.configuration import LocalEngineConfig
 from eixo.engine.lifecycle import EngineState
@@ -47,6 +48,7 @@ DocumentInput = DocumentSource | str | Path | bytes | bytearray | memoryview | B
 @dataclass(slots=True)
 class DocumentEngine:
     registry: CapabilityRegistry = field(default_factory=CapabilityRegistry)
+    pdf_provider_registry: PDFProviderRegistry = field(default_factory=PDFProviderRegistry)
     runtime: LocalRuntime = field(default_factory=LocalRuntime)
     inspect_document: InspectDocument | None = None
     parse_document: ParseDocument | None = None
@@ -68,6 +70,9 @@ class DocumentEngine:
         registry: CapabilityRegistry | None = None,
         providers: tuple[ProviderDescriptor, ...] = (),
         capabilities: tuple[Capability[object, object], ...] = (),
+        pdf_providers: tuple[PDFProvider, ...] = (),
+        pdf_provider_registry: PDFProviderRegistry | None = None,
+        pdf: PDFProviderSettings | None = None,
         data_directory: str | Path | None = None,
         job_database_path: str | Path | None = None,
         security: IngestionSecurityPolicy | None = None,
@@ -85,6 +90,8 @@ class DocumentEngine:
                 )
             if security is not None:
                 engine_config = replace(engine_config, security=security)
+            if pdf is not None:
+                engine_config = replace(engine_config, pdf=pdf)
         else:
             engine_config = LocalEngineConfig(
                 runtime=runtime_config
@@ -99,6 +106,7 @@ class DocumentEngine:
                     Path(job_database_path) if job_database_path is not None else None
                 ),
                 security=security or IngestionSecurityPolicy(),
+                pdf=pdf or PDFProviderSettings(),
             )
         if runtime is None:
             runtime = LocalRuntime(config=engine_config.runtime)
@@ -107,6 +115,9 @@ class DocumentEngine:
             registry.register_provider(provider)
         for capability in capabilities:
             registry.register(capability)
+        pdf_registry = pdf_provider_registry or PDFProviderRegistry()
+        for provider in pdf_providers:
+            pdf_registry.register(provider)
         ingest_document = IngestDocument.local(
             engine_config.data_directory,
             security_policy=engine_config.security,
@@ -126,6 +137,7 @@ class DocumentEngine:
         )
         return cls(
             registry=registry,
+            pdf_provider_registry=pdf_registry,
             runtime=runtime,
             inspect_document=InspectDocument(service),
             parse_document=ParseDocument(service),
@@ -140,6 +152,16 @@ class DocumentEngine:
     def register_capability(self, capability: Capability[object, object]) -> None:
         self._ensure_mutable()
         self.registry.register(capability)
+
+    def register_pdf_provider(self, provider: PDFProvider) -> None:
+        self._ensure_mutable()
+        self.pdf_provider_registry.register(provider)
+
+    @property
+    def pdf_provider(self) -> PDFProvider:
+        return self.pdf_provider_registry.resolve(
+            preferred_provider=self.config.pdf.default_provider
+        )
 
     async def __aenter__(self) -> "DocumentEngine":
         await self.start()

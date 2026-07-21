@@ -47,10 +47,32 @@ Dependencia: Bloco 1.
 | 2.7 | Criar jobs locais persistentes | Concluida |
 | 2.8 | Validacoes iniciais de seguranca | Concluida |
 
+## Bloco 3 - Decomposicao nativa e cena visual de PDF
+
+Dependencias: Blocos 1 e 2.
+
+Contexto detalhado: [block-3-native-pdf-scene.md](../block-3-native-pdf-scene.md).
+
+| Fase | Entrega | Estado |
+|---|---|---|
+| 3.1 | Criar contratos e providers nativos de PDF | Concluida |
+| 3.2 | Criar o PDF Inspector tecnico | Planejada |
+| 3.3 | Definir geometria e coordenadas canonicas | Planejada |
+| 3.4 | Mapear recursos, objetos e content streams | Planejada |
+| 3.5 | Criar catalogo de fontes e tipografia | Planejada |
+| 3.6 | Extrair texto granular e hierarquia textual nativa | Planejada |
+| 3.7 | Extrair imagens, mascaras e ocorrencias | Planejada |
+| 3.8 | Extrair vetores e estado grafico | Planejada |
+| 3.9 | Extrair links, anotacoes, formularios e camadas | Planejada |
+| 3.10 | Montar a cena visual de cada pagina | Planejada |
+| 3.11 | Criar o `NativePDFSceneArtifact` | Planejada |
+| 3.12 | Integrar parser, armazenamento e canais publicos | Planejada |
+| 3.13 | Criar corpus, golden tests e regressao visual | Planejada |
+
 | Bloco | Tema | Dependencia principal | Estado |
 |---|---|---|---|
 | 2 | Ingestao e ciclo de vida do documento | Bloco 1 | Concluido |
-| 3 | Extracao nativa de PDF | Blocos 1 e 2 | Planejado |
+| 3 | Decomposicao nativa e cena visual de PDF | Blocos 1 e 2 | Em andamento |
 | 4 | Extracao nativa de Excel | Blocos 1 e 2 | Planejado |
 | 5 | Modelo documental canonico e evidencias | Blocos 3 e 4 | Planejado |
 | 6 | Reconstrucao estrutural | Bloco 5 | Planejado |

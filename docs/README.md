@@ -13,16 +13,18 @@ Este diretorio organiza o contexto, a arquitetura, as decisoes, o roadmap e os d
 7. [Seguranca de ingestao](architecture/ingestion-security.md)
 8. [Limites de ingestao](specifications/ingestion-limits.md)
 9. [Erros de seguranca](specifications/security-errors.md)
-10. [Roadmap](roadmap/README.md)
-11. [Indice oficial de fases](roadmap/phases/README.md)
-12. [Decisoes arquiteturais](decisions/README.md)
-13. [Guia para agentes](../AGENTS.md)
-14. [Uso como biblioteca Python](guides/using-as-library.md)
-15. [Uso da API REST](guides/using-the-api.md)
-16. [Uso da CLI](guides/cli.md)
-17. [Manuseio seguro de arquivos](guides/safe-file-handling.md)
-18. [Testes de paridade](testing/parity-tests.md)
-19. [Arquivo historico](archive/README.md), quando for necessario auditar a origem das decisoes
+10. [Contratos e provider nativo de PDF](architecture/pdf-provider-contracts.md)
+11. [Bloco 3 - Decomposicao nativa e cena visual de PDF](roadmap/block-3-native-pdf-scene.md)
+12. [Roadmap](roadmap/README.md)
+13. [Indice oficial de fases](roadmap/phases/README.md)
+14. [Decisoes arquiteturais](decisions/README.md)
+15. [Guia para agentes](../AGENTS.md)
+16. [Uso como biblioteca Python](guides/using-as-library.md)
+17. [Uso da API REST](guides/using-the-api.md)
+18. [Uso da CLI](guides/cli.md)
+19. [Manuseio seguro de arquivos](guides/safe-file-handling.md)
+20. [Testes de paridade](testing/parity-tests.md)
+21. [Arquivo historico](archive/README.md), quando for necessario auditar a origem das decisoes
 
 ## Estrutura
 
@@ -33,10 +35,12 @@ docs/
 |-- architecture/
 |   |-- diagrams/
 |   |-- ingestion-security.md
+|   |-- pdf-provider-contracts.md
 |   `-- persistent-local-jobs.md
 |-- decisions/
 |-- specifications/
 |-- roadmap/
+|   |-- block-3-native-pdf-scene.md
 |   `-- phases/
 |-- guides/
 |-- testing/

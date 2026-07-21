@@ -107,6 +107,31 @@ Exemplos:
 - campos ambiguos podem escalar para modelo semantico;
 - conflitos persistentes podem gerar revisao humana.
 
+## Direcao Do Bloco 3
+
+Com a ingestao local, armazenamento, jobs e seguranca do Bloco 2 estabelecidos,
+o Bloco 3 passa a ter foco em decomposicao nativa e cena visual de PDF.
+
+O PDF deve ser tratado como uma cena grafica, nao apenas como texto extraido. A
+capability de PDF deve preservar objetos nativos, recursos, content streams,
+geometria, tipografia, imagens, vetores, clipping, transparencia, ordem de
+desenho, relacoes e proveniencia.
+
+O bloco deve produzir duas representacoes complementares:
+
+- `NativePDFParseArtifact`, para preservar a evidencia nativa com o minimo de
+  interpretacao;
+- `PDFPageScene`, para organizar uma cena visual normalizada, independente do
+  provider, apta a preview, selecao, diagnostico e edicao futura.
+
+O marco de conclusao do Bloco 3 e gerar um `NativePDFSceneArtifact` versionado e
+reconstruivel. Isso nao implica editor visual, OCR, reconstrucao semantica,
+tabelas reconstruidas ou exportacao de PDF alterado; esses temas pertencem a
+blocos futuros.
+
+Detalhes oficiais do bloco estao em
+[block-3-native-pdf-scene.md](../roadmap/block-3-native-pdf-scene.md).
+
 ## Capabilities
 
 Capabilities representam capacidades logicas, como parser nativo, renderer, OCR, layout, tabelas, classificacao, templates, schemas, normalizacao, validacao, confianca, reconciliacao e proveniencia.
@@ -149,4 +174,3 @@ As decisoes iniciais foram registradas em ADRs:
 ## Fontes historicas
 
 Os documentos originais foram preservados em [archive](../archive/README.md).
-

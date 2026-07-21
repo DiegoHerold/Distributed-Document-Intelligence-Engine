@@ -15,6 +15,7 @@ classifiers = [
 
 [project.optional-dependencies]
 local = ["eixo-runtime-local"]
+pdf-pymupdf = ["eixo-pdf-provider-pymupdf[backend]"]
 
 [build-system]
 requires = ["setuptools>=69"]

@@ -4,6 +4,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from eixo.core import IngestionSecurityPolicy
+from eixo.pdf import PDFProviderSettings
 from eixo.runtime.local import LocalRuntimeConfig
 
 
@@ -14,6 +15,7 @@ class LocalEngineConfig:
     data_directory: Path = field(default_factory=lambda: Path(".eixo/local"))
     job_database_path: Path | None = None
     security: IngestionSecurityPolicy = field(default_factory=IngestionSecurityPolicy)
+    pdf: PDFProviderSettings = field(default_factory=PDFProviderSettings)
 
     def __post_init__(self) -> None:
         if not str(self.data_directory).strip():

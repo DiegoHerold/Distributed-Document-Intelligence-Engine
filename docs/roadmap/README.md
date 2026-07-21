@@ -26,7 +26,7 @@ API, biblioteca, workers e CLI nunca devem reimplementar a mesma logica.
 | 0 | Organizacao e governanca do projeto | Concluido |
 | 1 | Fundacao tecnica reutilizavel | Planejado |
 | 2 | Ingestao e ciclo de vida do documento | Concluido |
-| 3 | Extracao nativa de PDF | Planejado |
+| 3 | Decomposicao nativa e cena visual de PDF | Em andamento |
 | 4 | Extracao nativa de Excel | Planejado |
 | 5 | Modelo documental canonico e evidencias | Planejado |
 | 6 | Reconstrucao estrutural | Planejado |
@@ -54,8 +54,12 @@ API, biblioteca, workers e CLI nunca devem reimplementar a mesma logica.
 
 ## Proxima fase recomendada
 
-Com o Bloco 2 concluido, a proxima etapa natural e o Bloco 3: extracao nativa
-de PDF sobre a base de ingestao, storage, jobs e seguranca local.
+Com o Bloco 2 concluido, a proxima etapa natural e o Bloco 3: decomposicao
+nativa e cena visual de PDF sobre a base de ingestao, storage, jobs e seguranca
+local.
+
+Veja o contexto detalhado em
+[block-3-native-pdf-scene.md](block-3-native-pdf-scene.md).
 
 ## Indice detalhado
 

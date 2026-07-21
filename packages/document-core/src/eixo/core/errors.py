@@ -232,6 +232,63 @@ class ReadTimeoutError(IngestionSecurityError):
     retryable = True
 
 
+class PDFProviderError(EixoError):
+    code = "pdf.provider_error"
+    category = ErrorCategory.EXECUTION
+
+
+class PDFProviderUnavailableError(PDFProviderError):
+    code = "pdf.provider_unavailable"
+    category = ErrorCategory.CONFIGURATION
+
+
+class UnsupportedPDFError(PDFProviderError):
+    code = "pdf.unsupported"
+    category = ErrorCategory.UNSUPPORTED_FORMAT
+
+
+class InvalidPDFError(PDFProviderError):
+    code = "pdf.invalid"
+    category = ErrorCategory.VALIDATION
+
+
+class CorruptedPDFError(InvalidPDFError):
+    code = "pdf.corrupted"
+
+
+class EncryptedPDFError(PDFProviderError):
+    code = "pdf.encrypted"
+    category = ErrorCategory.VALIDATION
+
+
+class PDFPasswordRequiredError(EncryptedPDFError):
+    code = "pdf.password_required"
+
+
+class InvalidPDFPasswordError(EncryptedPDFError):
+    code = "pdf.invalid_password"
+
+
+class PDFPageOutOfRangeError(PDFProviderError):
+    code = "pdf.page_out_of_range"
+    category = ErrorCategory.VALIDATION
+
+
+class PDFResourceLimitExceededError(PDFProviderError):
+    code = "pdf.resource_limit_exceeded"
+    category = ErrorCategory.VALIDATION
+
+
+class PDFProviderExecutionError(PDFProviderError):
+    code = "pdf.provider_execution_error"
+    retryable = True
+
+
+class ClosedPDFDocumentError(PDFProviderError):
+    code = "pdf.document_closed"
+    category = ErrorCategory.STATE
+
+
 class JobNotFoundError(EixoError):
     code = "job.not_found"
     category = ErrorCategory.NOT_FOUND

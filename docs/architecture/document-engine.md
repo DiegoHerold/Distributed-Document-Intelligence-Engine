@@ -51,6 +51,8 @@ Custom dependencies can be injected:
 engine = DocumentEngine.local(
     registry=registry,
     runtime=runtime,
+    pdf_providers=(pdf_provider,),
+    pdf=pdf_settings,
     data_directory=".eixo/local",
     job_database_path=".eixo/local/jobs/jobs.sqlite3",
     security=security_policy,
@@ -118,6 +120,17 @@ the current local engine.
 The policy is applied before content is stored, before capabilities run and
 before jobs persist successful results. See
 [ingestion-security.md](ingestion-security.md).
+
+## PDF Providers
+
+`DocumentEngine.local()` accepts `pdf_providers=(...)` and keeps a
+`PDFProviderRegistry` for native PDF providers. The registry stores provider
+contracts only; `DocumentEngine` does not import PyMuPDF or any concrete PDF
+backend.
+
+The active provider can be resolved through `engine.pdf_provider` when a default
+provider is configured or a single compatible provider is registered. See
+[pdf-provider-contracts.md](pdf-provider-contracts.md).
 
 ## Current limitation
 

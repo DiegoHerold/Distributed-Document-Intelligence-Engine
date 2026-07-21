@@ -57,6 +57,40 @@ async with DocumentEngine.local(security=security) as engine:
     ...
 ```
 
+## Native PDF Provider
+
+PDF provider contracts are available from `eixo.pdf`. The PyMuPDF-backed
+provider is optional and isolated from the core packages.
+
+```python
+from eixo import DocumentEngine, DocumentSource, PDFOpenOptions, PDFProviderSettings
+from eixo.providers.pdf.pymupdf import PYMUPDF_PROVIDER_ID, PyMuPDFPDFProvider
+
+provider = PyMuPDFPDFProvider()
+source = DocumentSource.from_path("document.pdf")
+
+engine = DocumentEngine.local(
+    pdf_providers=(provider,),
+    pdf=PDFProviderSettings(default_provider=PYMUPDF_PROVIDER_ID),
+)
+
+probe = await engine.pdf_provider.probe(source)
+
+async with await engine.pdf_provider.open(
+    source,
+    PDFOpenOptions(password=None),
+) as document:
+    info = await document.get_basic_info()
+    page = await document.get_page(0)
+    geometry = await page.get_basic_geometry()
+```
+
+Install the backend only when needed:
+
+```bash
+pip install "eixo-document-sdk-python[pdf-pymupdf]"
+```
+
 ## Typing
 
 The package includes `py.typed` and reexports typed contracts from the core packages,
@@ -79,3 +113,4 @@ Public errors are reexported from `eixo`, including `EixoError`,
 ## Dependencies
 
 The SDK remains lightweight. It does not install OCR, CUDA, databases, Redis, MinIO, Temporal or model dependencies.
+PyMuPDF is optional and is not imported by the core, engine, API or CLI.
