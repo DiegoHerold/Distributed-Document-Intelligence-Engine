@@ -49,17 +49,17 @@ async def main() -> None:
             version=CapabilityVersion("1.0.0"),
             input_contract="ProcessingRequest",
             output_contract="ProcessingResult",
-            supported_formats=("bytes",),
-            supported_media_types=("application/octet-stream",),
+            supported_formats=("pdf",),
+            supported_media_types=("application/pdf",),
             provider_id=provider_id,
             provider_version=ProviderVersion("1.0.0"),
         )
     )
     source = BytesSource(
-        content=b"example",
-        filename="example.bin",
-        declared_media_type="application/octet-stream",
-        size=7,
+        content=b"%PDF-1.7\n",
+        filename="example.pdf",
+        declared_media_type="application/pdf",
+        size=9,
     )
     async with DocumentEngine.local(providers=(provider,), capabilities=(capability,)) as engine:
         result = await engine.process(ProcessingRequest(source=source))
@@ -69,4 +69,3 @@ async def main() -> None:
 
 if __name__ == "__main__":
     asyncio.run(main())
-

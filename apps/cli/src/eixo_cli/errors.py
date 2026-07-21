@@ -6,13 +6,19 @@ from typing import Protocol
 from eixo import (
     CapabilityNotFoundError,
     ConfigurationError,
+    ArchiveSecurityError,
     ArtifactNotFoundError,
     ArtifactStorageError,
+    CorruptedFileError,
     DocumentNotFoundError,
     DocumentVersionConflictError,
     EixoError,
+    EmptyFileError,
     ExecutionCancelledError,
     ExecutionTimeoutError,
+    FileTooLargeError,
+    IngestionSecurityError,
+    InvalidMimeError,
     InvalidStateTransitionError,
     InvalidJobTransitionError,
     JobNotFoundError,
@@ -20,10 +26,14 @@ from eixo import (
     JobConcurrencyError,
     JobPersistenceError,
     JobResultUnavailableError,
+    PageLimitExceededError,
+    PathTraversalError,
+    ReadTimeoutError,
     SourceNotFileError,
     SourceNotFoundError,
     SourceNotReadableError,
     UnsupportedFormatError,
+    UnsafeFilenameError,
     ValidationError,
 )
 from eixo.core import ErrorCategory, ErrorResult
@@ -47,6 +57,16 @@ def exit_code_for_error(error: BaseException) -> ExitCode:
         return ExitCode.INVALID_ARGUMENTS
     if isinstance(error, (SourceNotFileError, SourceNotReadableError)):
         return ExitCode.INVALID_ARGUMENTS
+    if isinstance(error, FileTooLargeError):
+        return ExitCode.VALIDATION_ERROR
+    if isinstance(error, ReadTimeoutError):
+        return ExitCode.TIMEOUT
+    if isinstance(error, (PathTraversalError, UnsafeFilenameError, InvalidMimeError)):
+        return ExitCode.INVALID_ARGUMENTS
+    if isinstance(error, (CorruptedFileError, ArchiveSecurityError, PageLimitExceededError)):
+        return ExitCode.VALIDATION_ERROR
+    if isinstance(error, EmptyFileError):
+        return ExitCode.VALIDATION_ERROR
     if isinstance(error, UnsupportedFormatError):
         return ExitCode.UNSUPPORTED_FORMAT
     if isinstance(error, CapabilityNotFoundError):
@@ -91,6 +111,22 @@ def user_message_for_error(error: BaseException) -> str:
         return "Erro: a origem do documento nao e um arquivo."
     if isinstance(error, SourceNotReadableError):
         return "Erro: a origem do documento nao pode ser lida."
+    if isinstance(error, FileTooLargeError):
+        return "Erro: o arquivo excede o limite permitido."
+    if isinstance(error, EmptyFileError):
+        return "Erro: o arquivo esta vazio."
+    if isinstance(error, ReadTimeoutError):
+        return "Erro: tempo de leitura excedido."
+    if isinstance(error, InvalidMimeError):
+        return "Erro: MIME invalido ou incompativel."
+    if isinstance(error, CorruptedFileError):
+        return "Erro: arquivo corrompido ou estrutura invalida."
+    if isinstance(error, ArchiveSecurityError):
+        return "Erro: arquivo compactado rejeitado por politica de seguranca."
+    if isinstance(error, PageLimitExceededError):
+        return "Erro: o documento excede o limite de paginas."
+    if isinstance(error, (PathTraversalError, UnsafeFilenameError)):
+        return "Erro: nome ou caminho inseguro."
     if isinstance(error, CapabilityNotFoundError):
         return "Erro: capability necessaria nao encontrada."
     if isinstance(error, JobNotFoundError):

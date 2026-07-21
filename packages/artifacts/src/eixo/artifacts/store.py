@@ -21,6 +21,7 @@ from eixo.core import (
     ArtifactType,
     ArtifactWriteRequest,
     ContentHash,
+    UnsafeStorageKeyError,
     isoformat_utc,
     utc_now,
 )
@@ -267,10 +268,18 @@ class LocalArtifactStore:
         return directory / "content", directory / "metadata.json"
 
     def _artifact_directory(self, storage_key: str) -> Path:
+        if "\\" in storage_key or "\x00" in storage_key:
+            raise UnsafeStorageKeyError("Artifact storage key is unsafe")
         relative = Path(storage_key)
         if relative.is_absolute() or ".." in relative.parts:
-            raise ArtifactStorageError("Invalid artifact storage key")
-        return self.base_directory / "artifacts" / relative
+            raise UnsafeStorageKeyError("Artifact storage key is unsafe")
+        base = (self.base_directory / "artifacts").resolve()
+        candidate = (base / relative).resolve()
+        try:
+            candidate.relative_to(base)
+        except ValueError as exc:
+            raise UnsafeStorageKeyError("Artifact storage key escapes the artifact store") from exc
+        return candidate
 
     def _ensure_layout(self) -> None:
         for name in ("artifacts", "documents", "metadata", "temporary", "results"):

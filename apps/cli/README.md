@@ -68,6 +68,18 @@ Saida estruturada vai para `stdout`. Mensagens de erro vao para `stderr`.
 `--format json` usa a serializacao oficial dos contratos. `--output` sempre
 grava JSON UTF-8 e nao sobrescreve arquivos sem `--force`.
 
+## Seguranca de ingestao
+
+A CLI nao valida documentos por conta propria. Ela adapta caminhos locais para
+`DocumentSource` e deixa o `DocumentEngine` aplicar a politica central de
+ingestao: tamanho, vazio, formato real, MIME, corrupcao basica, XLSX/ZIP,
+timeout de leitura, limite de paginas conhecido e nomes perigosos.
+
+Em modo JSON, os erros usam os mesmos codigos publicos da biblioteca e da API,
+como `file_too_large`, `empty_file`, `unsupported_format`, `invalid_mime`,
+`corrupted_file`, `archive_security_error`, `page_limit_exceeded` e
+`read_timeout`.
+
 ## Codigos de saida
 
 | Codigo | Significado |

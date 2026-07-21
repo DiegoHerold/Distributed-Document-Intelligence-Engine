@@ -42,10 +42,14 @@ async with DocumentEngine.local() as engine:
 
 ```python
 from eixo import DocumentEngine, LocalEngineConfig, LocalRuntimeConfig
+from eixo import IngestionLimits, IngestionSecurityPolicy
 
 engine = DocumentEngine.local(
     data_directory=".eixo/local",
     job_database_path=".eixo/local/jobs/jobs.sqlite3",
+    security=IngestionSecurityPolicy(
+        limits=IngestionLimits(max_file_size_bytes=100 * 1024 * 1024)
+    ),
     config=LocalEngineConfig(
         runtime=LocalRuntimeConfig(
             max_concurrent_tasks=4,
@@ -69,6 +73,7 @@ Opcoes publicas atuais:
 - `default_timeout`;
 - `shutdown_timeout`;
 - `auto_start`.
+- `security`.
 
 ## Fontes
 
@@ -150,6 +155,14 @@ Na recuperacao, jobs que estavam em `created`, `queued` ou `running` viram
 | `JobPersistenceError` | Falha no store local de jobs | Depende |
 | `JobRecoveryError` | Falha ao recuperar jobs locais | Depende |
 | `InvalidStateTransitionError` | Operacao em estado invalido | Depende |
+| `FileTooLargeError` | Arquivo excede limite configurado | Apos ajuste |
+| `EmptyFileError` | Arquivo com 0 bytes | Apos correcao |
+| `UnsupportedFormatError` | Formato real nao suportado | Depende |
+| `InvalidMimeError` | MIME declarado invalido ou bloqueado | Apos correcao |
+| `CorruptedFileError` | Corrupcao basica detectada | Depende |
+| `PathTraversalError` | Caminho ou storage key inseguro | Nao |
+| `ArchiveSecurityError` | ZIP/XLSX rejeitado por politica | Depende |
+| `ReadTimeoutError` | Leitura excede timeout | Possivel |
 
 Exemplo:
 

@@ -33,6 +33,8 @@ from eixo.core import (
 from eixo.plugins import CapabilityDescriptor, ExecutionContext, ProviderDescriptor
 from eixo_api import ApiConfig, create_app
 
+PDF_BYTES = b"%PDF-1.7\n"
+
 
 def test_application_factory_import_and_openapi() -> None:
     app = create_app(config=ApiConfig(docs_enabled=True))
@@ -103,7 +105,7 @@ def test_inspect_upload_calls_engine_and_returns_result() -> None:
     with TestClient(create_app(engine=engine)) as client:
         response = client.post(
             "/v1/documents:inspect",
-            files={"file": ("sample.pdf", b"abc", "application/pdf")},
+            files={"file": ("sample.pdf", PDF_BYTES, "application/pdf")},
             data={"options": '{"mode":"quick"}'},
             headers={"X-Correlation-ID": "corr_test"},
         )
@@ -120,7 +122,7 @@ def test_parse_upload_options_and_result() -> None:
     with TestClient(create_app(engine=engine)) as client:
         response = client.post(
             "/v1/documents:parse",
-            files={"file": ("sample.pdf", b"abc", "application/pdf")},
+            files={"file": ("sample.pdf", PDF_BYTES, "application/pdf")},
             data={"options": '{"tables":true}', "requested_capability": "native"},
         )
 
@@ -132,7 +134,7 @@ def test_missing_capability_returns_structured_error() -> None:
     with TestClient(create_app(engine=DocumentEngine.local())) as client:
         response = client.post(
             "/v1/documents:inspect",
-            files={"file": ("sample.pdf", b"abc", "application/pdf")},
+            files={"file": ("sample.pdf", PDF_BYTES, "application/pdf")},
             headers={"X-Correlation-ID": "corr_missing"},
         )
 
@@ -165,7 +167,7 @@ def test_extraction_job_lifecycle_result_and_completed_cancel_conflict() -> None
     with TestClient(create_app(engine=engine)) as client:
         submitted = client.post(
             "/v1/extractions",
-            files={"file": ("sample.pdf", b"abc", "application/pdf")},
+            files={"file": ("sample.pdf", PDF_BYTES, "application/pdf")},
         )
         assert submitted.status_code == 202
         assert submitted.headers["Location"].startswith("/v1/extractions/job_")
@@ -186,7 +188,7 @@ def test_extraction_result_before_completion_and_cancel_idempotency() -> None:
     with TestClient(create_app(engine=engine)) as client:
         submitted = client.post(
             "/v1/extractions",
-            files={"file": ("sample.pdf", b"abc", "application/pdf")},
+            files={"file": ("sample.pdf", PDF_BYTES, "application/pdf")},
         )
         job_id = submitted.json()["job_id"]
         early_result = client.get(f"/v1/extractions/{job_id}/result")
@@ -222,7 +224,7 @@ def test_parallel_submissions_are_independent() -> None:
         responses = [
             client.post(
                 "/v1/extractions",
-                files={"file": (f"sample-{index}.pdf", b"abc", "application/pdf")},
+                files={"file": (f"sample-{index}.pdf", PDF_BYTES, "application/pdf")},
             )
             for index in range(3)
         ]
@@ -234,10 +236,10 @@ def test_parallel_submissions_are_independent() -> None:
 
 def test_api_and_library_parity_with_same_capability() -> None:
     source = eixo.BytesSource(
-        content=b"abc",
+        content=PDF_BYTES,
         filename="sample.pdf",
         declared_media_type="application/pdf",
-        size=3,
+        size=len(PDF_BYTES),
     )
 
     async def library_flow() -> ProcessingResult:
@@ -250,7 +252,7 @@ def test_api_and_library_parity_with_same_capability() -> None:
     with TestClient(create_app(engine=engine_with_fake_capabilities())) as client:
         submitted = client.post(
             "/v1/extractions",
-            files={"file": ("sample.pdf", b"abc", "application/pdf")},
+            files={"file": ("sample.pdf", PDF_BYTES, "application/pdf")},
         )
         job_id = submitted.json()["job_id"]
         wait_for_status(client, job_id, "completed")

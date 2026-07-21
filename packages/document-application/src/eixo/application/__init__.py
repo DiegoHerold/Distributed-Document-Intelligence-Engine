@@ -36,6 +36,12 @@ from eixo.application.services import (
     InMemoryJobService,
     PersistentJobService,
 )
+from eixo.application.security import (
+    ArchiveSecurityValidator,
+    DocumentSecurityValidator,
+    FilenameSanitizer,
+    SafeFilename,
+)
 from eixo.application.use_cases import (
     CancelJob,
     GetJobResult,
@@ -47,6 +53,7 @@ from eixo.application.use_cases import (
 )
 
 __all__ = [
+    "ArchiveSecurityValidator",
     "CancelJob",
     "CapabilityBackedDocumentService",
     "ContentHasher",
@@ -54,6 +61,8 @@ __all__ = [
     "DocumentFormatDetector",
     "DocumentLifecycle",
     "DocumentRepository",
+    "DocumentSecurityValidator",
+    "FilenameSanitizer",
     "GetJobResult",
     "GetJobStatus",
     "InspectDocument",
@@ -75,6 +84,7 @@ __all__ = [
     "ProcessingService",
     "ResolvedDocumentSource",
     "ResultRepository",
+    "SafeFilename",
     "SQLiteJobStore",
     "Sha256ContentHasher",
     "SourceResolver",

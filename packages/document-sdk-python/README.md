@@ -15,7 +15,11 @@ from eixo import DocumentEngine, ProcessingRequest
 ```python
 from eixo import DocumentEngine, DocumentSource, ProcessingRequest
 
-source = DocumentSource.from_bytes(b"example", filename="example.bin")
+source = DocumentSource.from_bytes(
+    b"%PDF-1.7\n",
+    filename="example.pdf",
+    media_type="application/pdf",
+)
 
 async with DocumentEngine.local() as engine:
     result = await engine.process(ProcessingRequest(source=source))
@@ -35,6 +39,24 @@ directory.
 
 Without a registered capability, methods raise `CapabilityNotFoundError`. Real PDF, Excel, OCR, layout and semantic capabilities are not implemented yet.
 
+## Ingestion Security
+
+`DocumentEngine.local()` applies the same central ingestion policy used by the
+REST API and CLI. The policy validates known size, streaming size, empty files,
+detected format, declared MIME, basic corruption, XLSX/ZIP limits, read
+timeouts, safe names and known page counts before storing the original.
+
+```python
+from eixo import DocumentEngine, IngestionLimits, IngestionSecurityPolicy
+
+security = IngestionSecurityPolicy(
+    limits=IngestionLimits(max_file_size_bytes=100 * 1024 * 1024)
+)
+
+async with DocumentEngine.local(security=security) as engine:
+    ...
+```
+
 ## Typing
 
 The package includes `py.typed` and reexports typed contracts from the core packages,
@@ -42,7 +64,17 @@ including artifact references and document lifecycle models.
 
 ## Errors
 
-Public errors are reexported from `eixo`, including `EixoError`, `CapabilityNotFoundError`, `ExecutionTimeoutError`, `ExecutionCancelledError`, `ConfigurationError`, `ValidationError`, `SourceNotFoundError`, `SourceNotFileError`, `SourceNotReadableError`, `JobNotFoundError`, `JobResultUnavailableError`, `InvalidJobTransitionError`, `JobConcurrencyError`, `JobPersistenceError` and `InvalidStateTransitionError`.
+Public errors are reexported from `eixo`, including `EixoError`,
+`CapabilityNotFoundError`, `ExecutionTimeoutError`, `ExecutionCancelledError`,
+`ConfigurationError`, `ValidationError`, `SourceNotFoundError`,
+`SourceNotFileError`, `SourceNotReadableError`, `FileTooLargeError`,
+`EmptyFileError`, `UnsupportedFormatError`, `InvalidMimeError`,
+`MimeMismatchError`, `CorruptedFileError`, `InvalidContainerError`,
+`UnsafeFilenameError`, `PathTraversalError`, `ArchiveSecurityError`,
+`ZipBombError`, `PageLimitExceededError`, `ReadTimeoutError`,
+`JobNotFoundError`, `JobResultUnavailableError`, `InvalidJobTransitionError`,
+`JobConcurrencyError`, `JobPersistenceError` and
+`InvalidStateTransitionError`.
 
 ## Dependencies
 

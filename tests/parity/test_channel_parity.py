@@ -4,7 +4,13 @@ import json
 
 from fastapi.testclient import TestClient
 
-from eixo import DocumentEngine, InspectionRequest, ProcessingRequest
+from eixo import (
+    DocumentEngine,
+    IngestionLimits,
+    IngestionSecurityPolicy,
+    InspectionRequest,
+    ProcessingRequest,
+)
 from eixo.core.serialization import to_jsonable
 from eixo_api import create_app
 from eixo_cli.main import main as cli_main
@@ -15,17 +21,23 @@ from tests.parity.fake_capabilities import error_to_result, parity_engine
 from tests.parity.normalization import normalize_for_parity
 
 
-def write_fixture(tmp_path, name: str, content: bytes = b"parity") -> ParityFixture:
+def write_fixture(tmp_path, name: str, content: bytes = b"%PDF-1.7\n") -> ParityFixture:
     path = tmp_path / name
     path.write_bytes(content)
     return ParityFixture(path=path, content=content)
 
 
-async def channel_results(operation: str, fixture: ParityFixture, *, timeout: float = 30.0):
+async def channel_results(
+    operation: str,
+    fixture: ParityFixture,
+    *,
+    timeout: float = 30.0,
+    security: IngestionSecurityPolicy | None = None,
+):
     drivers = (
-        ("library", LibraryParityDriver(timeout=timeout)),
-        ("api", APIParityDriver(timeout=timeout)),
-        ("cli", CLIParityDriver(timeout=timeout)),
+        ("library", LibraryParityDriver(timeout=timeout, security=security)),
+        ("api", APIParityDriver(timeout=timeout, security=security)),
+        ("cli", CLIParityDriver(timeout=timeout, security=security)),
     )
     return [
         ChannelResult(name, await getattr(driver, operation)(fixture))
@@ -79,7 +91,39 @@ def test_invalid_request_parity(tmp_path) -> None:
     async def run() -> None:
         results = await channel_results("inspect", write_fixture(tmp_path, "empty.pdf", b""))
         assert_semantically_equal(*results)
-        assert normalize_for_parity(results[0].value)["code"] == "validation.error"
+        assert normalize_for_parity(results[0].value)["code"] == "empty_file"
+
+    import asyncio
+
+    asyncio.run(run())
+
+
+def test_unsupported_format_security_parity(tmp_path) -> None:
+    async def run() -> None:
+        results = await channel_results(
+            "inspect",
+            write_fixture(tmp_path, "fake.pdf", b"MZ executable"),
+        )
+        assert_semantically_equal(*results)
+        assert normalize_for_parity(results[0].value)["code"] == "unsupported_format"
+
+    import asyncio
+
+    asyncio.run(run())
+
+
+def test_file_too_large_security_parity(tmp_path) -> None:
+    async def run() -> None:
+        security = IngestionSecurityPolicy(
+            limits=IngestionLimits(max_file_size_bytes=8)
+        )
+        results = await channel_results(
+            "inspect",
+            write_fixture(tmp_path, "too-large.pdf"),
+            security=security,
+        )
+        assert_semantically_equal(*results)
+        assert normalize_for_parity(results[0].value)["code"] == "file_too_large"
 
     import asyncio
 

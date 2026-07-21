@@ -11,15 +11,20 @@ from eixo.application.document_lifecycle import (
 from eixo.application.ingestion import (
     ContentIdentityService,
     LocalSourceResolver,
+    MagicBytesDocumentFormatDetector,
+    Sha256ContentHasher,
     SourceResolver,
 )
+from eixo.application.security import DocumentSecurityValidator
 from eixo.artifacts import ArtifactStore, LocalArtifactStore
 from eixo.core import (
     ArtifactType,
     ArtifactWriteRequest,
     DocumentIngestionResult,
+    DetectedDocumentFormat,
     DocumentSource,
     DocumentStatus,
+    IngestionSecurityPolicy,
 )
 
 
@@ -30,23 +35,44 @@ class IngestDocument:
     artifact_store: ArtifactStore
     document_repository: DocumentRepository
     lifecycle: DocumentLifecycle
+    security_validator: DocumentSecurityValidator
 
     @classmethod
-    def local(cls, data_directory) -> "IngestDocument":
+    def local(
+        cls,
+        data_directory,
+        security_policy: IngestionSecurityPolicy | None = None,
+    ) -> "IngestDocument":
+        policy = security_policy or IngestionSecurityPolicy()
         return cls(
-            source_resolver=LocalSourceResolver(),
-            content_identifier=ContentIdentityService(),
+            source_resolver=LocalSourceResolver(policy),
+            content_identifier=ContentIdentityService(
+                detector=MagicBytesDocumentFormatDetector(
+                    read_timeout_seconds=policy.limits.read_timeout_seconds,
+                ),
+                hasher=Sha256ContentHasher(
+                    max_size_bytes=policy.limits.max_file_size_bytes,
+                    read_timeout_seconds=policy.limits.read_timeout_seconds,
+                ),
+            ),
             artifact_store=LocalArtifactStore(data_directory),
             document_repository=LocalDocumentRepository(data_directory),
             lifecycle=DocumentLifecycle.default(),
+            security_validator=DocumentSecurityValidator(policy),
         )
 
     async def execute(self, source: DocumentSource) -> DocumentIngestionResult:
         async with self.source_resolver.resolve(source) as resolved:
-            identified = await self.content_identifier.identify(resolved)
+            detected = await self.content_identifier.detector.detect(resolved)
+            validation = await self.security_validator.validate(
+                source=resolved,
+                detected_format=detected,
+            )
+            detected = with_security_warnings(detected, validation.warnings)
+            identified = await self.content_identifier.identify_detected(resolved, detected)
             source_metadata = dict(resolved.source_metadata or {})
-            if resolved.filename is not None:
-                source_metadata.setdefault("filename", resolved.filename)
+            if validation.safe_filename is not None:
+                source_metadata.setdefault("filename", validation.safe_filename)
             if resolved.declared_mime is not None:
                 source_metadata.setdefault("declared_mime", resolved.declared_mime)
             record, received_transition = new_document_record(
@@ -78,7 +104,7 @@ class IngestDocument:
                     content_hash=identified.identity.content_hash,
                     size_bytes=identified.identity.size_bytes,
                     media_type=identified.identity.detected_format.canonical_mime,
-                    original_filename=resolved.filename,
+                    original_filename=validation.safe_filename,
                     producer="eixo.ingestion",
                     source=resolved.source_kind,
                     metadata={
@@ -114,6 +140,19 @@ class IngestDocument:
                     stored_transition,
                 ),
             )
+
+
+def with_security_warnings(
+    detected: DetectedDocumentFormat,
+    warnings: tuple,
+) -> DetectedDocumentFormat:
+    if not warnings:
+        return detected
+    existing = {warning.code for warning in detected.warnings}
+    merged = detected.warnings + tuple(
+        warning for warning in warnings if warning.code not in existing
+    )
+    return replace(detected, warnings=merged)
 
 
 __all__ = ["IngestDocument"]

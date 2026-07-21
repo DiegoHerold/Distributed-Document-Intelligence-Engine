@@ -95,8 +95,8 @@ def descriptor(
         version=CapabilityVersion("1.0.0"),
         input_contract=input_contract,
         output_contract=output_contract,
-        supported_formats=("bytes",),
-        supported_media_types=("application/octet-stream",),
+        supported_formats=("pdf",),
+        supported_media_types=("application/pdf",),
         provider_id=provider_id,
         provider_version=ProviderVersion("1.0.0"),
     )
@@ -151,11 +151,12 @@ def registry_with_fakes(*, slow_process: bool = False) -> CapabilityRegistry:
 
 
 def source() -> BytesSource:
+    content = b"%PDF-1.7\n"
     return BytesSource(
-        content=b"hello",
-        size=5,
-        filename="sample.bin",
-        declared_media_type="application/octet-stream",
+        content=content,
+        size=len(content),
+        filename="sample.pdf",
+        declared_media_type="application/pdf",
     )
 
 

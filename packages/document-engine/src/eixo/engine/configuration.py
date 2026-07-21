@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from pathlib import Path
 
+from eixo.core import IngestionSecurityPolicy
 from eixo.runtime.local import LocalRuntimeConfig
 
 
@@ -12,6 +13,7 @@ class LocalEngineConfig:
     auto_start: bool = True
     data_directory: Path = field(default_factory=lambda: Path(".eixo/local"))
     job_database_path: Path | None = None
+    security: IngestionSecurityPolicy = field(default_factory=IngestionSecurityPolicy)
 
     def __post_init__(self) -> None:
         if not str(self.data_directory).strip():

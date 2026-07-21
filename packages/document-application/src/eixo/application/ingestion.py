@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import hashlib
 import io
 import os
@@ -19,8 +20,12 @@ from eixo.core import (
     DocumentIdentity,
     DocumentSource,
     EixoWarning,
+    EmptyFileError,
+    FileTooLargeError,
     IdentifiedDocumentContent,
+    IngestionSecurityPolicy,
     LocalPathSource,
+    ReadTimeoutError,
     SourceNotFileError,
     SourceNotFoundError,
     SourceNotReadableError,
@@ -150,7 +155,7 @@ class SourceResolution:
     _resolved: ResolvedDocumentSource | None = None
 
     async def __aenter__(self) -> ResolvedDocumentSource:
-        resolved = self.resolver.open(self.source)
+        resolved = await self.resolver.open(self.source)
         self._resolved = resolved
         return resolved
 
@@ -162,16 +167,18 @@ class SourceResolution:
 
 @dataclass(frozen=True, slots=True)
 class LocalSourceResolver:
+    security_policy: IngestionSecurityPolicy = field(default_factory=IngestionSecurityPolicy)
+
     def resolve(self, source: DocumentSource) -> SourceResolution:
         return SourceResolution(self, source)
 
-    def open(self, source: DocumentSource) -> ResolvedDocumentSource:
+    async def open(self, source: DocumentSource) -> ResolvedDocumentSource:
         if isinstance(source, LocalPathSource):
             return self._open_path(source)
         if isinstance(source, BytesSource):
             return self._open_bytes(source)
         if isinstance(source, StreamSource):
-            return self._open_stream(source)
+            return await self._open_stream(source)
         raise SourceResolutionError(
             f"Unsupported source type: {source.source_type}",
             public_context={"source_type": source.source_type},
@@ -194,6 +201,7 @@ class LocalSourceResolver:
         except OSError as exc:
             raise SourceNotReadableError("Document source is not readable", cause=exc) from exc
         stat = path.stat()
+        self._validate_known_size(source.size if source.size is not None else stat.st_size)
         filename = source.filename or path.name
         return ResolvedDocumentSource(
             source=source,
@@ -211,8 +219,7 @@ class LocalSourceResolver:
         )
 
     def _open_bytes(self, source: BytesSource) -> ResolvedDocumentSource:
-        if not source.content:
-            raise ValidationError("Document source cannot be empty")
+        self._validate_known_size(len(source.content))
         stream = io.BytesIO(source.content)
         return ResolvedDocumentSource(
             source=source,
@@ -228,7 +235,7 @@ class LocalSourceResolver:
             _cleanup_stream=stream,
         )
 
-    def _open_stream(self, source: StreamSource) -> ResolvedDocumentSource:
+    async def _open_stream(self, source: StreamSource) -> ResolvedDocumentSource:
         stream = source.stream
         if stream is None:
             raise SourceResolutionError("Stream source is missing a stream")
@@ -244,6 +251,7 @@ class LocalSourceResolver:
                     cause=exc,
                 ) from exc
             content_length = source.size if source.size is not None else _content_length(stream)
+            self._validate_known_size(content_length)
             stream.seek(0)
             return ResolvedDocumentSource(
                 source=source,
@@ -260,7 +268,14 @@ class LocalSourceResolver:
                 _restore_position=original_position,
                 _close_external=source.close_on_cleanup,
             )
-        copied, size = _copy_stream_to_temporary(stream)
+        if source.size is not None:
+            self._validate_known_size(source.size)
+        copied, size = await _copy_stream_to_temporary(
+            stream,
+            max_size=self.security_policy.limits.max_file_size_bytes,
+            read_timeout_seconds=self.security_policy.limits.read_timeout_seconds,
+        )
+        self._validate_known_size(source.size if source.size is not None else size)
         copied.seek(0)
         return ResolvedDocumentSource(
             source=source,
@@ -278,11 +293,28 @@ class LocalSourceResolver:
             _close_external=source.close_on_cleanup,
         )
 
+    def _validate_known_size(self, size: int | None) -> None:
+        if size is None:
+            return
+        if size > self.security_policy.limits.max_file_size_bytes:
+            raise FileTooLargeError(
+                "Document exceeds the configured maximum size",
+                public_context={
+                    "limit_bytes": self.security_policy.limits.max_file_size_bytes,
+                    "observed_bytes": size,
+                    "unit": "bytes",
+                },
+            )
+        if self.security_policy.reject_empty_files and size == 0:
+            raise EmptyFileError("Document source is empty")
+
 
 @dataclass(frozen=True, slots=True)
 class MagicBytesDocumentFormatDetector:
+    read_timeout_seconds: float | None = None
+
     async def detect(self, source: ResolvedDocumentSource) -> DetectedDocumentFormat:
-        sample = source.read_sample()
+        sample = await self._read_sample(source)
         detected_format = self._detect_from_signature(sample, source)
         if detected_format is None:
             detected_format = self._detect_csv(sample, source)
@@ -299,6 +331,25 @@ class MagicBytesDocumentFormatDetector:
             declared_mime=source.declared_mime,
             declared_extension=source.declared_extension,
         )
+
+    async def _read_sample(self, source: ResolvedDocumentSource) -> bytes:
+        if self.read_timeout_seconds is None:
+            return source.read_sample()
+        source.rewind()
+        try:
+            sample = await asyncio.wait_for(
+                asyncio.to_thread(source.stream.read, SAMPLE_SIZE),
+                timeout=self.read_timeout_seconds,
+            )
+        except TimeoutError as exc:
+            raise ReadTimeoutError(
+                "Document read timed out",
+                public_context={"timeout_seconds": self.read_timeout_seconds},
+                cause=exc,
+            ) from exc
+        finally:
+            source.rewind()
+        return sample
 
     def _detect_from_signature(
         self,
@@ -362,17 +413,32 @@ class MagicBytesDocumentFormatDetector:
 @dataclass(frozen=True, slots=True)
 class Sha256ContentHasher:
     chunk_size: int = CHUNK_SIZE
+    max_size_bytes: int | None = None
+    read_timeout_seconds: float | None = None
 
     async def hash(self, source: ResolvedDocumentSource) -> tuple[ContentHash, int]:
         digest = hashlib.sha256()
         size = 0
         source.rewind()
         while True:
-            chunk = source.stream.read(self.chunk_size)
+            chunk = await _read_chunk(
+                source.stream,
+                self.chunk_size,
+                read_timeout_seconds=self.read_timeout_seconds,
+            )
             if not chunk:
                 break
             digest.update(chunk)
             size += len(chunk)
+            if self.max_size_bytes is not None and size > self.max_size_bytes:
+                raise FileTooLargeError(
+                    "Document exceeds the configured maximum size during read",
+                    public_context={
+                        "limit_bytes": self.max_size_bytes,
+                        "observed_bytes": size,
+                        "unit": "bytes",
+                    },
+                )
         source.rewind()
         return ContentHash("sha256", digest.hexdigest()), size
 
@@ -384,6 +450,13 @@ class ContentIdentityService:
 
     async def identify(self, source: ResolvedDocumentSource) -> IdentifiedDocumentContent:
         detected = await self.detector.detect(source)
+        return await self.identify_detected(source, detected)
+
+    async def identify_detected(
+        self,
+        source: ResolvedDocumentSource,
+        detected: DetectedDocumentFormat,
+    ) -> IdentifiedDocumentContent:
         content_hash, size = await self.hasher.hash(source)
         metadata = ContentMetadata(
             size_bytes=size,
@@ -537,16 +610,59 @@ def _content_length(stream: BinaryIO) -> int | None:
         return None
 
 
-def _copy_stream_to_temporary(stream: BinaryIO) -> tuple[BinaryIO, int]:
+async def _copy_stream_to_temporary(
+    stream: BinaryIO,
+    *,
+    max_size: int,
+    read_timeout_seconds: float,
+) -> tuple[BinaryIO, int]:
     copied = tempfile.TemporaryFile("w+b")
     size = 0
-    while True:
-        chunk = stream.read(CHUNK_SIZE)
-        if not chunk:
-            break
-        copied.write(chunk)
-        size += len(chunk)
-    return copied, size
+    try:
+        while True:
+            chunk = await _read_chunk(
+                stream,
+                CHUNK_SIZE,
+                read_timeout_seconds=read_timeout_seconds,
+            )
+            if not chunk:
+                break
+            copied.write(chunk)
+            size += len(chunk)
+            if size > max_size:
+                raise FileTooLargeError(
+                    "Document exceeds the configured maximum size during read",
+                    public_context={
+                        "limit_bytes": max_size,
+                        "observed_bytes": size,
+                        "unit": "bytes",
+                    },
+                )
+        return copied, size
+    except Exception:
+        copied.close()
+        raise
+
+
+async def _read_chunk(
+    stream: BinaryIO,
+    size: int,
+    *,
+    read_timeout_seconds: float | None,
+) -> bytes:
+    if read_timeout_seconds is None:
+        return stream.read(size)
+    try:
+        return await asyncio.wait_for(
+            asyncio.to_thread(stream.read, size),
+            timeout=read_timeout_seconds,
+        )
+    except TimeoutError as exc:
+        raise ReadTimeoutError(
+            "Document read timed out",
+            public_context={"timeout_seconds": read_timeout_seconds},
+            cause=exc,
+        ) from exc
 
 
 def _looks_like_xlsx(stream: BinaryIO) -> bool:

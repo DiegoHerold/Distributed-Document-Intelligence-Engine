@@ -69,6 +69,11 @@ A borda HTTP le `multipart/form-data`, valida tamanho, nome e MIME declarado, e
 converte o arquivo para `BytesSource`. Objetos do framework nao vazam para o
 nucleo.
 
+A validacao documental de seguranca e executada pelo `DocumentEngine`: tamanho
+real, arquivo vazio, formato detectado, divergencias de MIME/extensao,
+corrupcao basica, XLSX/ZIP e nomes perigosos usam a mesma politica da
+biblioteca Python e da CLI. A API faz apenas validacoes de transporte.
+
 Limitacao atual: o adapter multipart inicial materializa o arquivo em memoria
 depois de respeitar o limite configurado. O nucleo recebe somente `BytesSource`,
 nao tipos HTTP.
@@ -91,6 +96,15 @@ Mapeamentos principais:
 
 - `CapabilityNotFoundError`: 422
 - `UnsupportedFormatError`: 415
+- `InvalidMimeError`: 415
+- `FileTooLargeError`: 413
+- `ReadTimeoutError`: 408
+- `UnsafeFilenameError`: 400
+- `PathTraversalError`: 400
+- `EmptyFileError`: 422
+- `CorruptedFileError`: 422
+- `ArchiveSecurityError`: 422
+- `PageLimitExceededError`: 422
 - `UploadTooLargeError`: 413
 - `ArtifactNotFoundError`: 404
 - `DocumentVersionConflictError`: 409

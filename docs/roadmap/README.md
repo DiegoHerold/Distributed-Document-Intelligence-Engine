@@ -25,7 +25,7 @@ API, biblioteca, workers e CLI nunca devem reimplementar a mesma logica.
 |---|---|---|
 | 0 | Organizacao e governanca do projeto | Concluido |
 | 1 | Fundacao tecnica reutilizavel | Planejado |
-| 2 | Ingestao e ciclo de vida do documento | Em andamento |
+| 2 | Ingestao e ciclo de vida do documento | Concluido |
 | 3 | Extracao nativa de PDF | Planejado |
 | 4 | Extracao nativa de Excel | Planejado |
 | 5 | Modelo documental canonico e evidencias | Planejado |
@@ -54,9 +54,8 @@ API, biblioteca, workers e CLI nunca devem reimplementar a mesma logica.
 
 ## Proxima fase recomendada
 
-Com a Fase 2.7 concluida, a proxima etapa natural e a Fase 2.8:
-validacoes iniciais de seguranca sobre entrada, caminhos locais, limites e
-superficie publica.
+Com o Bloco 2 concluido, a proxima etapa natural e o Bloco 3: extracao nativa
+de PDF sobre a base de ingestao, storage, jobs e seguranca local.
 
 ## Indice detalhado
 

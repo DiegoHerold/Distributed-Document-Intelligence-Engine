@@ -136,9 +136,100 @@ class IncompatibleCapabilityError(CapabilityError):
     code = "capability.incompatible"
 
 
-class UnsupportedFormatError(EixoError):
-    code = "format.unsupported"
+class IngestionSecurityError(EixoError):
+    code = "ingestion_security_error"
+    category = ErrorCategory.VALIDATION
+
+
+class FileTooLargeError(IngestionSecurityError):
+    code = "file_too_large"
+
+
+class EmptyFileError(IngestionSecurityError):
+    code = "empty_file"
+
+
+class UnsupportedFormatError(IngestionSecurityError):
+    code = "unsupported_format"
     category = ErrorCategory.UNSUPPORTED_FORMAT
+
+
+class InvalidMimeError(IngestionSecurityError):
+    code = "invalid_mime"
+
+
+class MimeMismatchError(InvalidMimeError):
+    code = "mime_mismatch"
+
+
+class CorruptedFileError(IngestionSecurityError):
+    code = "corrupted_file"
+
+
+class TruncatedFileError(CorruptedFileError):
+    code = "truncated_file"
+
+
+class InvalidContainerError(CorruptedFileError):
+    code = "invalid_container"
+
+
+class InvalidDocumentStructureError(CorruptedFileError):
+    code = "invalid_document_structure"
+
+
+class UnsafeFilenameError(IngestionSecurityError):
+    code = "unsafe_filename"
+
+
+class PathTraversalError(IngestionSecurityError):
+    code = "path_traversal_detected"
+
+
+class UnsafeStorageKeyError(PathTraversalError):
+    code = "unsafe_storage_key"
+
+
+class ArchiveSecurityError(IngestionSecurityError):
+    code = "archive_security_error"
+
+
+class ArchiveTooManyEntriesError(ArchiveSecurityError):
+    code = "archive_too_many_entries"
+
+
+class ArchiveUncompressedSizeExceededError(ArchiveSecurityError):
+    code = "archive_uncompressed_size_exceeded"
+
+
+class ArchiveEntryTooLargeError(ArchiveSecurityError):
+    code = "archive_entry_too_large"
+
+
+class SuspiciousCompressionRatioError(ArchiveSecurityError):
+    code = "suspicious_compression_ratio"
+
+
+class ZipBombError(ArchiveSecurityError):
+    code = "zip_bomb_detected"
+
+
+class EncryptedArchiveNotAllowedError(ArchiveSecurityError):
+    code = "encrypted_archive_not_allowed"
+
+
+class UnsafeArchiveEntryError(ArchiveSecurityError):
+    code = "unsafe_archive_entry"
+
+
+class PageLimitExceededError(IngestionSecurityError):
+    code = "page_limit_exceeded"
+
+
+class ReadTimeoutError(IngestionSecurityError):
+    code = "read_timeout"
+    category = ErrorCategory.TIMEOUT
+    retryable = True
 
 
 class JobNotFoundError(EixoError):

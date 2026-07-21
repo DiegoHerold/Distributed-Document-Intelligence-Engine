@@ -85,7 +85,13 @@ def test_public_configuration_defaults_validation_and_immutability() -> None:
 
 def test_public_lifecycle_and_capability_absent() -> None:
     async def run() -> None:
-        source = BytesSource(content=b"x", size=1, filename="x.bin")
+        content = b"%PDF-1.7\n"
+        source = BytesSource(
+            content=content,
+            size=len(content),
+            filename="x.pdf",
+            declared_media_type="application/pdf",
+        )
         async with DocumentEngine.local() as engine:
             with pytest.raises(CapabilityNotFoundError):
                 await engine.inspect(InspectionRequest(source=source))
@@ -203,4 +209,3 @@ def _env_with_workspace_paths() -> dict[str, str]:
     env["PYTHONPATH"] = str(Path(paths[0]))
     env["PYTHONPATH"] = os.pathsep.join(str(path) for path in paths)
     return env
-

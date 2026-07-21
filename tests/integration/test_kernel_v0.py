@@ -214,11 +214,12 @@ def engine_with_kernel_capability(
 
 
 def source() -> BytesSource:
+    content = b"%PDF-1.7\n"
     return BytesSource(
-        content=b"kernel",
+        content=content,
         filename="kernel.pdf",
         declared_media_type="application/pdf",
-        size=6,
+        size=len(content),
     )
 
 

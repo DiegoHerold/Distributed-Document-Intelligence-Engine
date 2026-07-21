@@ -6,7 +6,12 @@ from eixo import BytesSource, CapabilityNotFoundError, DocumentEngine, Inspectio
 
 
 async def main() -> None:
-    source = BytesSource(content=b"example", filename="example.bin", size=7)
+    source = BytesSource(
+        content=b"%PDF-1.7\n",
+        filename="example.pdf",
+        declared_media_type="application/pdf",
+        size=9,
+    )
     async with DocumentEngine.local() as engine:
         try:
             await engine.inspect(InspectionRequest(source=source))
@@ -16,4 +21,3 @@ async def main() -> None:
 
 if __name__ == "__main__":
     asyncio.run(main())
-

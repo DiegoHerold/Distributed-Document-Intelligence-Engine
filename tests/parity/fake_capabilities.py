@@ -16,6 +16,7 @@ from eixo.core import (
     ErrorCategory,
     ErrorResult,
     ExecutionError,
+    IngestionSecurityPolicy,
     InspectionRequest,
     InspectionResult,
     JobId,
@@ -39,7 +40,11 @@ DOCUMENT_ID = DocumentId("doc_parity")
 PROCESS_JOB_ID = JobId("job_parity_result")
 
 
-def parity_engine(*, timeout: float = 30.0) -> DocumentEngine:
+def parity_engine(
+    *,
+    timeout: float = 30.0,
+    security: IngestionSecurityPolicy | None = None,
+) -> DocumentEngine:
     provider = ProviderDescriptor(
         provider_id=PROVIDER_ID,
         name="parity-provider",
@@ -55,6 +60,7 @@ def parity_engine(*, timeout: float = 30.0) -> DocumentEngine:
         ),
         data_directory=Path(tempfile.mkdtemp(prefix="eixo-parity-")),
         default_timeout=timeout,
+        security=security,
     )
 
 

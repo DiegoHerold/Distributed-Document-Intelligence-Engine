@@ -120,6 +120,13 @@ Respostas de erro usam `ErrorResult`.
 | --- | ---: |
 | `ValidationError` | 422 |
 | `UploadTooLargeError` | 413 |
+| `FileTooLargeError` | 413 |
+| `EmptyFileError` | 422 |
+| `InvalidMimeError` | 415 |
+| `CorruptedFileError` | 422 |
+| `ArchiveSecurityError` | 422 |
+| `PathTraversalError` | 400 |
+| `ReadTimeoutError` | 408 |
 | `CapabilityNotFoundError` | 422 |
 | `UnsupportedFormatError` | 415 |
 | `JobNotFoundError` | 404 |

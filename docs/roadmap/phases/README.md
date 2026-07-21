@@ -45,11 +45,11 @@ Dependencia: Bloco 1.
 | 2.5 | Criar `LocalArtifactStore` | Concluida |
 | 2.6 | Criar ciclo de vida do documento | Concluida |
 | 2.7 | Criar jobs locais persistentes | Concluida |
-| 2.8 | Validacoes iniciais de seguranca | Planejada |
+| 2.8 | Validacoes iniciais de seguranca | Concluida |
 
 | Bloco | Tema | Dependencia principal | Estado |
 |---|---|---|---|
-| 2 | Ingestao e ciclo de vida do documento | Bloco 1 | Em andamento |
+| 2 | Ingestao e ciclo de vida do documento | Bloco 1 | Concluido |
 | 3 | Extracao nativa de PDF | Blocos 1 e 2 | Planejado |
 | 4 | Extracao nativa de Excel | Blocos 1 e 2 | Planejado |
 | 5 | Modelo documental canonico e evidencias | Blocos 3 e 4 | Planejado |

@@ -112,6 +112,7 @@ Cada mudanca gera `DocumentStateTransition` com data, motivo, ator e metadados.
 ```text
 resolver source
 identificar conteudo
+validar seguranca de ingestao
 criar DocumentRecord(received)
 transicionar para validated
 armazenar OriginalDocumentArtifact
@@ -136,6 +137,10 @@ Nao foram implementados:
 - retencao avancada;
 - protecao completa contra ZIP bomb;
 - ciclo de vida distribuido.
+
+Observacao: a Fase 2.8 adicionou protecao inicial contra ZIP bomb, limites,
+nomes perigosos e path traversal. Sandbox completo, antivirus e seguranca de
+producao continuam fora do escopo.
 
 ## Contradicoes e Duvidas
 

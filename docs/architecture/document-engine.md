@@ -53,6 +53,7 @@ engine = DocumentEngine.local(
     runtime=runtime,
     data_directory=".eixo/local",
     job_database_path=".eixo/local/jobs/jobs.sqlite3",
+    security=security_policy,
 )
 ```
 
@@ -109,6 +110,14 @@ Interrupted non-terminal jobs are recovered explicitly:
 
 Production persistence, distributed workers and event streams remain outside
 the current local engine.
+
+## Ingestion Security
+
+`DocumentEngine.local()` accepts `security=IngestionSecurityPolicy(...)`.
+
+The policy is applied before content is stored, before capabilities run and
+before jobs persist successful results. See
+[ingestion-security.md](ingestion-security.md).
 
 ## Current limitation
 

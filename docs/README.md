@@ -10,15 +10,19 @@ Este diretorio organiza o contexto, a arquitetura, as decisoes, o roadmap e os d
 4. [Ingestao e identidade de conteudo](architecture/ingestion-and-content-identity.md)
 5. [Storage local e ciclo de vida documental](architecture/local-storage-and-document-lifecycle.md)
 6. [Jobs locais persistentes](architecture/persistent-local-jobs.md)
-7. [Roadmap](roadmap/README.md)
-8. [Indice oficial de fases](roadmap/phases/README.md)
-9. [Decisoes arquiteturais](decisions/README.md)
-10. [Guia para agentes](../AGENTS.md)
-11. [Uso como biblioteca Python](guides/using-as-library.md)
-12. [Uso da API REST](guides/using-the-api.md)
-13. [Uso da CLI](guides/cli.md)
-14. [Testes de paridade](testing/parity-tests.md)
-15. [Arquivo historico](archive/README.md), quando for necessario auditar a origem das decisoes
+7. [Seguranca de ingestao](architecture/ingestion-security.md)
+8. [Limites de ingestao](specifications/ingestion-limits.md)
+9. [Erros de seguranca](specifications/security-errors.md)
+10. [Roadmap](roadmap/README.md)
+11. [Indice oficial de fases](roadmap/phases/README.md)
+12. [Decisoes arquiteturais](decisions/README.md)
+13. [Guia para agentes](../AGENTS.md)
+14. [Uso como biblioteca Python](guides/using-as-library.md)
+15. [Uso da API REST](guides/using-the-api.md)
+16. [Uso da CLI](guides/cli.md)
+17. [Manuseio seguro de arquivos](guides/safe-file-handling.md)
+18. [Testes de paridade](testing/parity-tests.md)
+19. [Arquivo historico](archive/README.md), quando for necessario auditar a origem das decisoes
 
 ## Estrutura
 
@@ -28,6 +32,7 @@ docs/
 |-- context/
 |-- architecture/
 |   |-- diagrams/
+|   |-- ingestion-security.md
 |   `-- persistent-local-jobs.md
 |-- decisions/
 |-- specifications/

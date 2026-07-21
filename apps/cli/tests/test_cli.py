@@ -34,6 +34,8 @@ from eixo.plugins import CapabilityDescriptor, ExecutionContext, ProviderDescrip
 from eixo_cli.exit_codes import ExitCode
 from eixo_cli.main import main
 
+PDF_BYTES = b"%PDF-1.7\n"
+
 
 def test_root_help_and_version() -> None:
     out = io.StringIO()
@@ -63,7 +65,7 @@ def test_command_help() -> None:
 
 def test_inspect_console_json_and_output_file(tmp_path: Path) -> None:
     document = tmp_path / "sample.pdf"
-    document.write_bytes(b"abc")
+    document.write_bytes(PDF_BYTES)
     output = tmp_path / "inspection.json"
 
     console = io.StringIO()
@@ -100,7 +102,7 @@ def test_inspect_console_json_and_output_file(tmp_path: Path) -> None:
 
 def test_output_does_not_overwrite_without_force(tmp_path: Path) -> None:
     document = tmp_path / "sample.pdf"
-    document.write_bytes(b"abc")
+    document.write_bytes(PDF_BYTES)
     output = tmp_path / "inspection.json"
     output.write_text("{}", encoding="utf-8")
     err = io.StringIO()
@@ -132,7 +134,7 @@ def test_inspect_missing_file_and_debug(tmp_path: Path) -> None:
 
 def test_missing_capability_exit_code(tmp_path: Path) -> None:
     document = tmp_path / "sample.pdf"
-    document.write_bytes(b"abc")
+    document.write_bytes(PDF_BYTES)
 
     code = main(["parse", str(document)], stdout=io.StringIO(), stderr=io.StringIO())
 
@@ -141,7 +143,7 @@ def test_missing_capability_exit_code(tmp_path: Path) -> None:
 
 def test_parse_and_process_json(tmp_path: Path) -> None:
     document = tmp_path / "sample.pdf"
-    document.write_bytes(b"abc")
+    document.write_bytes(PDF_BYTES)
 
     parse_out = io.StringIO()
     assert (
@@ -172,7 +174,7 @@ def test_parse_and_process_json(tmp_path: Path) -> None:
 
 def test_process_invalid_profile(tmp_path: Path) -> None:
     document = tmp_path / "sample.pdf"
-    document.write_bytes(b"abc")
+    document.write_bytes(PDF_BYTES)
 
     code = main(
         ["process", str(document), "--profile", "slow"],
@@ -185,7 +187,7 @@ def test_process_invalid_profile(tmp_path: Path) -> None:
 
 def test_process_no_wait_returns_job(tmp_path: Path) -> None:
     document = tmp_path / "sample.pdf"
-    document.write_bytes(b"abc")
+    document.write_bytes(PDF_BYTES)
     out = io.StringIO()
 
     code = main(
@@ -257,7 +259,7 @@ def test_jobs_status_result_cancel_and_errors() -> None:
 
 def test_cli_library_parity_with_fake_capability(tmp_path: Path) -> None:
     document = tmp_path / "sample.pdf"
-    document.write_bytes(b"abc")
+    document.write_bytes(PDF_BYTES)
 
     async def library_flow() -> ProcessingResult:
         async with engine_with_fake_capabilities() as engine:
@@ -266,7 +268,7 @@ def test_cli_library_parity_with_fake_capability(tmp_path: Path) -> None:
                     path=document,
                     filename=document.name,
                     declared_media_type="application/pdf",
-                    size=3,
+                    size=len(PDF_BYTES),
                 )
             )
             return await engine.process(request)

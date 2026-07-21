@@ -136,6 +136,7 @@ receber contrato
   -> adaptar entrada publica para DocumentSource, quando necessario
   -> resolver fonte
   -> detectar formato real
+  -> validar seguranca de ingestao
   -> calcular hash e identidade de conteudo
   -> armazenar original como artefato local
   -> registrar DocumentRecord com status stored
@@ -282,6 +283,7 @@ Regras principais:
 - `DocumentSource` descreve origem, mas nao abre arquivo;
 - `SourceResolver` controla abertura, stream e cleanup;
 - deteccao nao confia apenas em extensao ou MIME declarado;
+- seguranca de ingestao rejeita entradas perigosas antes do storage;
 - SHA-256 e calculado sobre bytes reais em chunks;
 - `DocumentId` nao e igual ao hash e continua reservado para persistencia futura.
 
@@ -316,6 +318,24 @@ Regras principais:
 - `cancel_requested` interrompido vira `cancelled`;
 - resultados estruturados pequenos sobrevivem a restart simples.
 
+## Seguranca De Ingestao
+
+A Fase 2.8 adiciona `IngestionSecurityPolicy`, `IngestionLimits`,
+`DocumentSecurityValidator`, `ArchiveSecurityValidator`, `FilenameSanitizer` e
+erros publicos de seguranca.
+
+A documentacao detalhada esta em
+[ingestion-security.md](ingestion-security.md).
+
+Regras principais:
+
+- documentos externos sao nao confiaveis;
+- tamanho, vazio, formato, MIME, nome, path e ZIP/XLSX sao validados antes de
+  armazenar;
+- rejeitados nao viram artefato valido;
+- API, CLI e SDK usam a mesma politica pelo engine;
+- limites sao configuraveis por instancia.
+
 ## Diagnostico Do Estado Atual
 
 Implementado:
@@ -329,6 +349,7 @@ Implementado:
 - API REST inicial;
 - CLI inicial;
 - testes de arquitetura, runtime, engine, API, CLI e kernel.
+- seguranca inicial de ingestao.
 
 Incompleto por desenho:
 
@@ -344,7 +365,7 @@ Incompleto por desenho:
 Proximas evolucoes naturais:
 
 - Fase 1.11: paridade formal SDK/API/CLI;
-- providers reais de inspecao e parsing;
+- Bloco 3: providers reais de inspecao e parsing de PDF;
 - contratos de artefatos mais ricos;
 - modelo canonico;
 - persistencia substituivel de producao;

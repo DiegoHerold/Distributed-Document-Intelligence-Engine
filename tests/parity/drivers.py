@@ -13,6 +13,7 @@ from fastapi.testclient import TestClient
 import eixo
 from eixo import (
     DocumentEngine,
+    IngestionSecurityPolicy,
     InspectionRequest,
     JobId,
     JobStatus,
@@ -42,26 +43,41 @@ class ParityFixture:
 
 
 class LibraryParityDriver:
-    def __init__(self, *, timeout: float = 30.0) -> None:
+    def __init__(
+        self,
+        *,
+        timeout: float = 30.0,
+        security: IngestionSecurityPolicy | None = None,
+    ) -> None:
         self.timeout = timeout
+        self.security = security
 
     async def inspect(self, fixture: ParityFixture) -> Any:
         try:
-            async with parity_engine(timeout=self.timeout) as engine:
+            async with parity_engine(
+                timeout=self.timeout,
+                security=self.security,
+            ) as engine:
                 return await engine.inspect(InspectionRequest(source=fixture.source()))
         except Exception as exc:
             return error_to_result(exc)
 
     async def parse(self, fixture: ParityFixture) -> Any:
         try:
-            async with parity_engine(timeout=self.timeout) as engine:
+            async with parity_engine(
+                timeout=self.timeout,
+                security=self.security,
+            ) as engine:
                 return await engine.parse(ParseRequest(source=fixture.source()))
         except Exception as exc:
             return error_to_result(exc)
 
     async def process(self, fixture: ParityFixture) -> Any:
         try:
-            async with parity_engine(timeout=self.timeout) as engine:
+            async with parity_engine(
+                timeout=self.timeout,
+                security=self.security,
+            ) as engine:
                 return await engine.process(
                     ProcessingRequest(
                         source=fixture.source(),
@@ -72,7 +88,10 @@ class LibraryParityDriver:
             return error_to_result(exc)
 
     async def submit_status_result(self, fixture: ParityFixture) -> dict[str, Any]:
-        async with parity_engine(timeout=self.timeout) as engine:
+        async with parity_engine(
+            timeout=self.timeout,
+            security=self.security,
+        ) as engine:
             job = await engine.submit(
                 ProcessingRequest(source=fixture.source(), profile=fixture.profile)
             )
@@ -81,13 +100,19 @@ class LibraryParityDriver:
             return {"job": job, "status": status, "result": result}
 
     async def submit_job(self, fixture: ParityFixture) -> Any:
-        async with parity_engine(timeout=self.timeout) as engine:
+        async with parity_engine(
+            timeout=self.timeout,
+            security=self.security,
+        ) as engine:
             return await engine.submit(
                 ProcessingRequest(source=fixture.source(), profile=fixture.profile)
             )
 
     async def cancel(self, fixture: ParityFixture) -> Any:
-        async with parity_engine(timeout=self.timeout) as engine:
+        async with parity_engine(
+            timeout=self.timeout,
+            security=self.security,
+        ) as engine:
             job = await engine.submit(
                 ProcessingRequest(source=fixture.source(), profile=fixture.profile)
             )
@@ -95,11 +120,19 @@ class LibraryParityDriver:
 
 
 class APIParityDriver:
-    def __init__(self, *, timeout: float = 30.0) -> None:
+    def __init__(
+        self,
+        *,
+        timeout: float = 30.0,
+        security: IngestionSecurityPolicy | None = None,
+    ) -> None:
         self.timeout = timeout
+        self.security = security
 
     async def inspect(self, fixture: ParityFixture) -> Any:
-        with TestClient(create_app(engine=parity_engine(timeout=self.timeout))) as client:
+        with TestClient(
+            create_app(engine=parity_engine(timeout=self.timeout, security=self.security))
+        ) as client:
             response = client.post(
                 "/v1/documents:inspect",
                 files={"file": (fixture.path.name, fixture.content, fixture.media_type)},
@@ -107,7 +140,9 @@ class APIParityDriver:
             return response.json()
 
     async def parse(self, fixture: ParityFixture) -> Any:
-        with TestClient(create_app(engine=parity_engine(timeout=self.timeout))) as client:
+        with TestClient(
+            create_app(engine=parity_engine(timeout=self.timeout, security=self.security))
+        ) as client:
             response = client.post(
                 "/v1/documents:parse",
                 files={"file": (fixture.path.name, fixture.content, fixture.media_type)},
@@ -115,7 +150,9 @@ class APIParityDriver:
             return response.json()
 
     async def process(self, fixture: ParityFixture) -> Any:
-        with TestClient(create_app(engine=parity_engine(timeout=self.timeout))) as client:
+        with TestClient(
+            create_app(engine=parity_engine(timeout=self.timeout, security=self.security))
+        ) as client:
             response = client.post(
                 "/v1/extractions",
                 files={"file": (fixture.path.name, fixture.content, fixture.media_type)},
@@ -129,7 +166,9 @@ class APIParityDriver:
             return result.json()
 
     async def submit_status_result(self, fixture: ParityFixture) -> dict[str, Any]:
-        with TestClient(create_app(engine=parity_engine(timeout=self.timeout))) as client:
+        with TestClient(
+            create_app(engine=parity_engine(timeout=self.timeout, security=self.security))
+        ) as client:
             response = client.post(
                 "/v1/extractions",
                 files={"file": (fixture.path.name, fixture.content, fixture.media_type)},
@@ -141,7 +180,9 @@ class APIParityDriver:
             return {"job": job, "status": status, "result": result}
 
     async def submit_job(self, fixture: ParityFixture) -> Any:
-        with TestClient(create_app(engine=parity_engine(timeout=self.timeout))) as client:
+        with TestClient(
+            create_app(engine=parity_engine(timeout=self.timeout, security=self.security))
+        ) as client:
             response = client.post(
                 "/v1/extractions",
                 files={"file": (fixture.path.name, fixture.content, fixture.media_type)},
@@ -150,7 +191,9 @@ class APIParityDriver:
             return response.json()
 
     async def cancel(self, fixture: ParityFixture) -> Any:
-        with TestClient(create_app(engine=parity_engine(timeout=self.timeout))) as client:
+        with TestClient(
+            create_app(engine=parity_engine(timeout=self.timeout, security=self.security))
+        ) as client:
             response = client.post(
                 "/v1/extractions",
                 files={"file": (fixture.path.name, fixture.content, fixture.media_type)},
@@ -161,14 +204,21 @@ class APIParityDriver:
 
 
 class CLIParityDriver:
-    def __init__(self, *, timeout: float = 30.0) -> None:
+    def __init__(
+        self,
+        *,
+        timeout: float = 30.0,
+        security: IngestionSecurityPolicy | None = None,
+    ) -> None:
         self.timeout = timeout
+        self.security = security
 
     async def inspect(self, fixture: ParityFixture) -> Any:
         return await asyncio.to_thread(
             run_cli_json,
             ["inspect", str(fixture.path), "--format", "json"],
             timeout=self.timeout,
+            security=self.security,
         )
 
     async def parse(self, fixture: ParityFixture) -> Any:
@@ -176,6 +226,7 @@ class CLIParityDriver:
             run_cli_json,
             ["parse", str(fixture.path), "--format", "json"],
             timeout=self.timeout,
+            security=self.security,
         )
 
     async def process(self, fixture: ParityFixture) -> Any:
@@ -190,6 +241,7 @@ class CLIParityDriver:
                 "json",
             ],
             timeout=self.timeout,
+            security=self.security,
         )
 
     async def submit_status_result(self, fixture: ParityFixture) -> dict[str, Any]:
@@ -208,10 +260,13 @@ class CLIParityDriver:
                 "json",
             ],
             timeout=self.timeout,
+            security=self.security,
         )
 
     def _submit_status_result_sync(self, fixture: ParityFixture) -> dict[str, Any]:
-        persistent = PersistentCliEngine(parity_engine(timeout=self.timeout))
+        persistent = PersistentCliEngine(
+            parity_engine(timeout=self.timeout, security=self.security)
+        )
         try:
             job_id = asyncio.run(seed_completed_job(persistent, fixture))
             status = run_cli_json(
@@ -232,7 +287,9 @@ class CLIParityDriver:
         return await asyncio.to_thread(self._cancel_sync, fixture)
 
     def _cancel_sync(self, fixture: ParityFixture) -> Any:
-        persistent = PersistentCliEngine(parity_engine(timeout=self.timeout))
+        persistent = PersistentCliEngine(
+            parity_engine(timeout=self.timeout, security=self.security)
+        )
         try:
             job_id = asyncio.run(seed_queued_job(persistent, fixture))
             return run_cli_json(
@@ -248,13 +305,15 @@ def run_cli_json(
     args: list[str],
     *,
     timeout: float,
+    security: IngestionSecurityPolicy | None = None,
     engine_factory=None,
 ) -> Any:
     stdout = io.StringIO()
     stderr = io.StringIO()
     code = cli_main(
         args,
-        engine_factory=engine_factory or (lambda: parity_engine(timeout=timeout)),
+        engine_factory=engine_factory
+        or (lambda: parity_engine(timeout=timeout, security=security)),
         stdout=stdout,
         stderr=stderr,
     )

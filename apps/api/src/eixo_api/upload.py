@@ -7,7 +7,7 @@ from pathlib import PurePath
 
 from fastapi import Request
 
-from eixo.core import BytesSource, UnsupportedFormatError, ValidationError
+from eixo.core import BytesSource, EmptyFileError, UnsupportedFormatError, ValidationError
 from eixo_api.configuration import ApiConfig
 
 CHUNK_SIZE = 1024 * 1024
@@ -31,7 +31,7 @@ class HttpDocumentSourceAdapter:
         if len(file.content) > self.config.max_upload_size:
             raise UploadTooLargeError("Upload exceeds configured maximum size")
         if not file.content:
-            raise ValidationError("Uploaded file cannot be empty")
+            raise EmptyFileError("Document source is empty")
         return BytesSource(
             content=file.content,
             filename=filename,
@@ -42,7 +42,7 @@ class HttpDocumentSourceAdapter:
 
 
 class UploadTooLargeError(ValidationError):
-    code = "upload.too_large"
+    code = "file_too_large"
 
 
 @dataclass(frozen=True, slots=True)

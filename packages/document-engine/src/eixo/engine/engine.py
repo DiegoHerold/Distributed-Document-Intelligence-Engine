@@ -24,6 +24,7 @@ from eixo.core import (
     DocumentIngestionResult,
     InspectionRequest,
     InspectionResult,
+    IngestionSecurityPolicy,
     InvalidStateTransitionError,
     JobId,
     JobResult,
@@ -69,6 +70,7 @@ class DocumentEngine:
         capabilities: tuple[Capability[object, object], ...] = (),
         data_directory: str | Path | None = None,
         job_database_path: str | Path | None = None,
+        security: IngestionSecurityPolicy | None = None,
         max_concurrent_tasks: int | None = None,
         default_timeout: float | None = None,
     ) -> "DocumentEngine":
@@ -81,6 +83,8 @@ class DocumentEngine:
                     engine_config,
                     job_database_path=Path(job_database_path),
                 )
+            if security is not None:
+                engine_config = replace(engine_config, security=security)
         else:
             engine_config = LocalEngineConfig(
                 runtime=runtime_config
@@ -94,6 +98,7 @@ class DocumentEngine:
                 job_database_path=(
                     Path(job_database_path) if job_database_path is not None else None
                 ),
+                security=security or IngestionSecurityPolicy(),
             )
         if runtime is None:
             runtime = LocalRuntime(config=engine_config.runtime)
@@ -102,7 +107,10 @@ class DocumentEngine:
             registry.register_provider(provider)
         for capability in capabilities:
             registry.register(capability)
-        ingest_document = IngestDocument.local(engine_config.data_directory)
+        ingest_document = IngestDocument.local(
+            engine_config.data_directory,
+            security_policy=engine_config.security,
+        )
         service = CapabilityBackedDocumentService(
             registry=registry,
             runtime=runtime,
