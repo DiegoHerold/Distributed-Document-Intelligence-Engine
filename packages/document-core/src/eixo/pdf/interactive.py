@@ -144,7 +144,9 @@ class PDFInteractiveExtractionOptions(Serializable):
         ):
             _validate_positive_optional(name, getattr(self, name))
         _validate_positive_optional("timeout_seconds", self.timeout_seconds)
-        if self.page_selection is not None and any(page < 0 for page in self.page_selection):
+        if self.page_selection is not None and any(
+            page < 0 for page in self.page_selection
+        ):
             raise ValueError("page_selection cannot contain negative indexes")
 
     def safe_options(self) -> dict[str, Any]:
@@ -205,7 +207,11 @@ class PDFDestinationResolver(Serializable):
         provenance: PDFProviderProvenance | None = None,
     ) -> PDFDestination:
         page = self._page_by_index(page_index)
-        status = PDFResolutionStatus.RESOLVED if page is not None else PDFResolutionStatus.UNRESOLVED
+        status = (
+            PDFResolutionStatus.RESOLVED
+            if page is not None
+            else PDFResolutionStatus.UNRESOLVED
+        )
         warning = (
             EixoWarning(
                 code="link_destination_unresolved",
@@ -217,7 +223,11 @@ class PDFDestinationResolver(Serializable):
         )
         return PDFDestination(
             destination_id=destination_id(page_index, named_destination, raw_reference),
-            destination_type=PDFDestinationType.XYZ if point is not None else PDFDestinationType.FIT,
+            destination_type=(
+                PDFDestinationType.XYZ
+                if point is not None
+                else PDFDestinationType.FIT
+            ),
             page_reference=page,
             page_id=page.stable_id if page else None,
             coordinates=point,

@@ -152,6 +152,15 @@ fill, stroke, estado grafico efetivo, clipping separado, camadas vetoriais por
 pagina e artefato `PDFNativeVectorArtifact`. A implementacao atual usa
 `get_drawings()` do PyMuPDF como fonte best effort e nao reconstrui tabelas nem
 decodifica operadores graficos crus.
+Cenas visuais por pagina ja possuem contratos iniciais para consolidar texto,
+imagens, vetores, clipping e elementos interativos em `PDFPageScene`, com
+elementos visuais leves, referencias aos artefatos de origem, ordem visual,
+relacoes, estatisticas e proveniencia. A cena consome artefatos e `PageGeometry`
+ja produzidos; ela nao reabre o PDF nem executa nova extracao.
+O artefato nativo final inicial do Bloco 3 tambem ja existe como
+`NativePDFSceneArtifact`, consolidando inspecao, recursos, cenas por pagina,
+fontes, textos, imagens, vetores, interacoes, warnings, limitacoes, fidelidade,
+editabilidade preliminar, estatisticas e proveniencia por referencia.
 
 Detalhes oficiais do bloco estao em
 [block-3-native-pdf-scene.md](../roadmap/block-3-native-pdf-scene.md).

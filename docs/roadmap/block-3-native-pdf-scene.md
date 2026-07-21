@@ -294,6 +294,8 @@ Entrega implementada: `PDFPathCommand`, `PDFVectorSubpath`, `PDFVectorPath`,
 
 ### 3.9 - Links, anotacoes, formularios e camadas
 
+Status: parcial.
+
 Preservar componentes interativos e opcionais:
 
 - links com area clicavel, URI, destino interno, pagina de destino, acao e bbox;
@@ -306,6 +308,8 @@ Preservar componentes interativos e opcionais:
 Nao implementar edicao ou assinatura de formularios.
 
 ### 3.10 - PDFPageScene
+
+Status: concluida.
 
 Montar a cena visual de cada pagina.
 
@@ -338,7 +342,17 @@ Contrato base: `PDFVisualElement` com `element_id`, `element_type`, `page_id`,
 Identificadores devem ser deterministicos quando possivel, estaveis entre
 execucoes equivalentes e independentes de enderecos de memoria.
 
+Entrega implementada: `PDFVisualElement`, `PDFPageScene`,
+`PDFPageScenesArtifact` e `PDFPageSceneBuilder`, com relacoes, ordem visual,
+estatisticas e serializacao deterministica. Ver
+[pdf-page-scene.md](../architecture/pdf-page-scene.md),
+[pdf-visual-elements.md](../specifications/pdf-visual-elements.md),
+[pdf-scene-order.md](../specifications/pdf-scene-order.md) e
+[pdf-scene-relations.md](../specifications/pdf-scene-relations.md).
+
 ### 3.11 - NativePDFSceneArtifact
+
+Status: concluida.
 
 Consolidar a extracao em um artefato proprio do Eixo:
 
@@ -375,6 +389,15 @@ Indicios de editabilidade:
 - `unknown`.
 
 O artefato nao pode ser apenas a serializacao bruta do provider.
+
+Entrega implementada: `NativePDFSceneArtifact`,
+`NativePDFSceneArtifactBuilder`, `PDFFidelitySummary`,
+`PDFEditabilitySummary`, `NativePDFSceneStatistics`,
+`PDFConsolidatedWarning` e `PDFArtifactLimitation`. Ver
+[native-pdf-scene-artifact.md](../architecture/native-pdf-scene-artifact.md),
+[pdf-fidelity.md](../specifications/pdf-fidelity.md),
+[pdf-editability-hints.md](../specifications/pdf-editability-hints.md) e
+[pdf-artifact-versioning.md](../specifications/pdf-artifact-versioning.md).
 
 ### 3.12 - Integracao publica, armazenamento e jobs
 

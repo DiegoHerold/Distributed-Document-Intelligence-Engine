@@ -37,6 +37,7 @@ from eixo import (
     PDFVectorShapeClassification,
     PDFVectorVisibility,
 )
+from eixo.pdf import PDFInteractiveExtractionOptions
 from eixo.providers.pdf.pymupdf import PYMUPDF_PROVIDER_ID, PyMuPDFPDFProvider
 
 PDF_BYTES = b"%PDF-1.7\n% fake\n"
@@ -467,6 +468,24 @@ def test_document_engine_extracts_pdf_native_vectors_with_fake_backend() -> None
 
         assert artifact.statistics.vector_path_count == 4
         assert artifact.page_layers[0].ordered_element_ids
+
+    asyncio.run(run())
+
+
+def test_pymupdf_provider_returns_interactive_artifact_with_fake_backend() -> None:
+    async def run() -> None:
+        provider = PyMuPDFPDFProvider(_backend=FakePyMuPDFBackend())
+        source = DocumentSource.from_bytes(PDF_BYTES, filename="interactive.pdf")
+
+        async with await provider.open(source) as document:
+            artifact = await document.get_native_interactive(
+                PDFInteractiveExtractionOptions()
+            )
+
+        assert artifact.page_layers[0].page_reference.page_number == 1
+        assert artifact.statistics.layer_count == len(artifact.layers)
+        assert artifact.capability_matrix
+        assert "FakeDocument" not in str(artifact.to_dict())
 
     asyncio.run(run())
 

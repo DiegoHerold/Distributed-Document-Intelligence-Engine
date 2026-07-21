@@ -2696,6 +2696,126 @@ def _vector_limitations(
     )
 
 
+def _interactive_from_document(
+    handle: PyMuPDFPDFDocumentHandle,
+    options: PDFInteractiveExtractionOptions,
+    structure: PDFInternalStructureArtifact,
+) -> PDFInteractiveArtifact:
+    page_count = _page_count(handle.document)
+    selected_pages = _selected_pages(page_count, options.page_selection)
+    page_layers = tuple(
+        PDFPageInteractiveLayer(
+            page_reference=_page_reference_for_index(structure, page_index),
+            provenance=_provenance(
+                handle.descriptor,
+                operation="extract_pdf_interactive.page",
+                source=handle.resolved,
+                options=options.safe_options(),
+                page_index=page_index,
+            ),
+        )
+        for page_index in selected_pages
+    )
+    layers = (
+        tuple(
+            PDFLayer(
+                layer_id=layer_id(
+                    layer.name,
+                    layer.object_reference.xref if layer.object_reference else None,
+                ),
+                object_reference=layer.object_reference,
+                name=layer.name,
+                intent=layer.intent,
+                default_visibility=layer.default_visible,
+                current_visibility=layer.default_visible,
+                warnings=layer.provenance.warnings
+                if hasattr(layer.provenance, "warnings")
+                else (),
+                provenance=layer.provenance,
+            )
+            for layer in structure.resource_catalog.layers
+        )
+        if options.include_layers
+        else ()
+    )
+    limitation = ProviderLimitation(
+        code="interactive_details_best_effort",
+        message=(
+            "Interactive extraction is initialized from the internal resource catalog; "
+            "link, annotation and widget detail extraction remains provider best effort."
+        ),
+        scope="interactive",
+    )
+    artifact = PDFInteractiveArtifact(
+        artifact_version=ContractVersion("1.0.0"),
+        provider=handle.descriptor,
+        document_id=structure.document_id,
+        source_structure_artifact=structure,
+        layers=layers,
+        page_layers=page_layers,
+        capability_matrix=_interactive_capability_matrix(),
+        limitations=handle.descriptor.limitations + (limitation,),
+        provenance=_provenance(
+            handle.descriptor,
+            operation="extract_pdf_interactive",
+            source=handle.resolved,
+            options=options.safe_options(),
+        ),
+    )
+    return PDFInteractiveArtifact(
+        artifact_version=artifact.artifact_version,
+        provider=artifact.provider,
+        document_id=artifact.document_id,
+        source_structure_artifact=artifact.source_structure_artifact,
+        links=artifact.links,
+        destinations=artifact.destinations,
+        annotations=artifact.annotations,
+        appearances=artifact.appearances,
+        form=artifact.form,
+        fields=artifact.fields,
+        widgets=artifact.widgets,
+        layers=artifact.layers,
+        layer_configurations=artifact.layer_configurations,
+        layer_memberships=artifact.layer_memberships,
+        marked_content_scopes=artifact.marked_content_scopes,
+        page_layers=artifact.page_layers,
+        statistics=interactive_statistics(artifact),
+        capability_matrix=artifact.capability_matrix,
+        warnings=artifact.warnings,
+        limitations=artifact.limitations,
+        provenance=artifact.provenance,
+    )
+
+
+def _interactive_capability_matrix() -> tuple[PDFInteractiveCapabilityMatrixEntry, ...]:
+    return (
+        PDFInteractiveCapabilityMatrixEntry(
+            information="links",
+            support=PDFInteractiveSupportStatus.UNKNOWN,
+            origin="provider document/page metadata",
+            limitation="Detailed link extraction is not normalized in this phase.",
+        ),
+        PDFInteractiveCapabilityMatrixEntry(
+            information="annotations",
+            support=PDFInteractiveSupportStatus.UNKNOWN,
+            origin="provider document/page metadata",
+            limitation="Annotation appearances are not materialized yet.",
+        ),
+        PDFInteractiveCapabilityMatrixEntry(
+            information="forms",
+            support=PDFInteractiveSupportStatus.UNKNOWN,
+            origin="provider document/page metadata",
+            limitation="AcroForm fields and widgets are not normalized yet.",
+        ),
+        PDFInteractiveCapabilityMatrixEntry(
+            information="layers",
+            support=PDFInteractiveSupportStatus.PARTIALLY_SUPPORTED,
+            origin="PDFResourceCatalog.layers",
+            precision="resource_catalog_layer_descriptors",
+        ),
+    )
+
+
 def _typography_capability_matrix() -> tuple[PDFFontCapabilityMatrixEntry, ...]:
     return (
         PDFFontCapabilityMatrixEntry(

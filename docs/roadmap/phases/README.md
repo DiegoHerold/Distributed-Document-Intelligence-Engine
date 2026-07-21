@@ -63,9 +63,9 @@ Contexto detalhado: [block-3-native-pdf-scene.md](../block-3-native-pdf-scene.md
 | 3.6 | Extrair texto granular e hierarquia textual nativa | Concluida |
 | 3.7 | Extrair imagens, mascaras e ocorrencias | Concluida |
 | 3.8 | Extrair vetores e estado grafico | Concluida |
-| 3.9 | Extrair links, anotacoes, formularios e camadas | Planejada |
-| 3.10 | Montar a cena visual de cada pagina | Planejada |
-| 3.11 | Criar o `NativePDFSceneArtifact` | Planejada |
+| 3.9 | Extrair links, anotacoes, formularios e camadas | Parcial |
+| 3.10 | Montar a cena visual de cada pagina | Concluida |
+| 3.11 | Criar o `NativePDFSceneArtifact` | Concluida |
 | 3.12 | Integrar parser, armazenamento e canais publicos | Planejada |
 | 3.13 | Criar corpus, golden tests e regressao visual | Planejada |
 

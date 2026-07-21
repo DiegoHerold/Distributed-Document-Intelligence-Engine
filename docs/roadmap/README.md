@@ -54,8 +54,11 @@ API, biblioteca, workers e CLI nunca devem reimplementar a mesma logica.
 
 ## Proxima fase recomendada
 
-Com vetores e estado grafico mapeados de forma inicial, a proxima etapa natural
-e a Fase 3.9: links, anotacoes, formularios e camadas.
+Com o `NativePDFSceneArtifact` inicial consolidado, a proxima etapa natural e a
+Fase 3.12: integracao publica, armazenamento e jobs para o parser nativo de PDF.
+A Fase 3.9 ainda tem pendencias de extracao detalhada de links, anotacoes e
+formularios no provider PyMuPDF; por isso a 3.12 deve tratar interatividade
+como best effort ate essa cobertura amadurecer.
 
 Veja o contexto detalhado em
 [block-3-native-pdf-scene.md](block-3-native-pdf-scene.md).

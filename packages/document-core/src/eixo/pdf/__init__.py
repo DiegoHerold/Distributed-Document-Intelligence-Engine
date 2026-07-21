@@ -137,6 +137,24 @@ from eixo.pdf.native_text import (
     native_word_id,
 )
 from eixo.pdf.native_text_mapper import DefaultPDFNativeTextExtractor
+from eixo.pdf.native_scene import (
+    NativePDFSceneArtifact,
+    NativePDFScenePageSummary,
+    NativePDFSceneProvenance,
+    NativePDFSceneSourceArtifactReference,
+    NativePDFSceneStatistics,
+    PDFArtifactLimitation,
+    PDFArtifactLimitationCategory,
+    PDFConsolidatedWarning,
+    PDFEditabilitySummary,
+    PDFFidelityDimension,
+    PDFFidelitySummary,
+    PDFNativeSceneEditabilityStatus,
+    editability_counts,
+    fidelity_counts,
+    native_pdf_scene_artifact_id,
+)
+from eixo.pdf.native_scene_builder import NativePDFSceneArtifactBuilder
 from eixo.pdf.structure import (
     PDFColorSpaceResource,
     PDFContentOperation,
@@ -262,6 +280,29 @@ from eixo.pdf.models import (
     ProviderLimitation,
 )
 from eixo.pdf.registry import PDFProviderRegistry
+from eixo.pdf.scene import (
+    PDFPageScene,
+    PDFPageSceneOptions,
+    PDFPageSceneStatistics,
+    PDFPageScenesArtifact,
+    PDFPageScenesStatistics,
+    PDFSceneEditabilityHint,
+    PDFSceneElementType,
+    PDFSceneFidelity,
+    PDFSceneOrderConfidence,
+    PDFSceneOrderMethod,
+    PDFSceneRelation,
+    PDFSceneRelationType,
+    PDFSceneSourceReference,
+    PDFSceneVisibility,
+    PDFVisualElement,
+    pdf_page_scene_statistics,
+    pdf_page_scenes_statistics,
+    pdf_scene_element_id,
+    pdf_scene_id,
+    pdf_scene_relation_id,
+)
+from eixo.pdf.scene_builder import PDFPageSceneBuilder
 
 __all__ = [
     "PDFBasicInfo",
@@ -508,4 +549,44 @@ __all__ = [
     "vector_statistics",
     "vector_subpath_id",
     "widget_id",
+]
+
+__all__ += [
+    "NativePDFSceneArtifact",
+    "NativePDFSceneArtifactBuilder",
+    "NativePDFScenePageSummary",
+    "NativePDFSceneProvenance",
+    "NativePDFSceneSourceArtifactReference",
+    "NativePDFSceneStatistics",
+    "PDFArtifactLimitation",
+    "PDFArtifactLimitationCategory",
+    "PDFConsolidatedWarning",
+    "PDFEditabilitySummary",
+    "PDFFidelityDimension",
+    "PDFFidelitySummary",
+    "PDFNativeSceneEditabilityStatus",
+    "PDFPageScene",
+    "PDFPageSceneBuilder",
+    "PDFPageSceneOptions",
+    "PDFPageSceneStatistics",
+    "PDFPageScenesArtifact",
+    "PDFPageScenesStatistics",
+    "PDFSceneEditabilityHint",
+    "PDFSceneElementType",
+    "PDFSceneFidelity",
+    "PDFSceneOrderConfidence",
+    "PDFSceneOrderMethod",
+    "PDFSceneRelation",
+    "PDFSceneRelationType",
+    "PDFSceneSourceReference",
+    "PDFSceneVisibility",
+    "PDFVisualElement",
+    "editability_counts",
+    "fidelity_counts",
+    "native_pdf_scene_artifact_id",
+    "pdf_page_scene_statistics",
+    "pdf_page_scenes_statistics",
+    "pdf_scene_element_id",
+    "pdf_scene_id",
+    "pdf_scene_relation_id",
 ]
