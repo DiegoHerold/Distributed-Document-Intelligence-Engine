@@ -265,6 +265,8 @@ e adapter PyMuPDF best effort. Ver
 
 ### 3.8 - Vetores e estado grafico
 
+Status: concluida.
+
 Extrair elementos graficos nativos como `VectorPath`, `LineSegment`,
 `Rectangle`, `BezierCurve`, `Polygon`, `FilledRegion`, `Stroke`,
 `ShadingReference` e `PatternReference`.
@@ -279,6 +281,16 @@ Criar `PDFClippingPath` e permitir referencias a `clip_path_reference`,
 
 Sinais como `possible_separator` ou `possible_table_border` sao permitidos, mas
 reconstrucao de tabelas nao pertence a este bloco.
+
+Entrega implementada: `PDFPathCommand`, `PDFVectorSubpath`, `PDFVectorPath`,
+`PDFFillStyle`, `PDFStrokeStyle`, `PDFEffectiveGraphicsState`,
+`PDFGraphicsStateResolver`, `PDFClippingPath`, `PDFPageVectorLayer`,
+`PDFNativeVectorArtifact`, integracao
+`DocumentEngine.extract_pdf_native_vectors()` e adapter PyMuPDF best effort por
+`page.get_drawings()`. Ver [pdf-vectors.md](../architecture/pdf-vectors.md),
+[pdf-graphics-state.md](../specifications/pdf-graphics-state.md),
+[pdf-clipping.md](../specifications/pdf-clipping.md) e
+[pdf-vector-capabilities.md](../providers/pdf-vector-capabilities.md).
 
 ### 3.9 - Links, anotacoes, formularios e camadas
 

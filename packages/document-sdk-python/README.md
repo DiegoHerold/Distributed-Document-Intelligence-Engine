@@ -168,6 +168,22 @@ occurrences = images.image_catalog.occurrences_for_resource(
 Image bytes are represented by hashes, sizes and artifact references. Large
 binary payloads are not embedded in the serialized artifact.
 
+## PDF Native Vectors
+
+Fase 3.8 exposes native vector paths and effective graphics state:
+
+```python
+vectors = await engine.extract_pdf_native_vectors(source)
+
+path = vectors.vector_paths[0]
+commands = path.commands
+graphics_state = vectors.graphics_states[0]
+```
+
+Vector commands, subpaths, fill/stroke styles, clipping references and provider
+paint order are preserved. The current PyMuPDF adapter is best effort and does
+not reconstruct tables or expose backend objects.
+
 Install the backend only when needed:
 
 ```bash

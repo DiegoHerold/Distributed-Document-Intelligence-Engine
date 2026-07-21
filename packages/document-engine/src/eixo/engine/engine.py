@@ -38,20 +38,28 @@ from eixo.plugins import Capability, CapabilityRegistry, ProviderDescriptor
 from eixo.pdf import PDFProvider, PDFProviderRegistry, PDFProviderSettings
 from eixo.pdf import (
     DefaultPDFInternalStructureMapper,
+    DefaultPDFInteractiveExtractor,
     DefaultPDFNativeImageExtractor,
     DefaultPDFNativeTextExtractor,
+    DefaultPDFNativeVectorExtractor,
     DefaultPDFTechnicalInspector,
     DefaultPDFTypographyResolver,
     PDFInternalMappingOptions,
     PDFInternalStructureArtifact,
     PDFInternalStructureMapper,
     PDFImageExtractionOptions,
+    PDFInteractiveArtifact,
+    PDFInteractiveExtractionOptions,
+    PDFInteractiveExtractor,
     PDFInspectionOptions,
     PDFNativeImageArtifact,
     PDFNativeImageExtractor,
     PDFNativeTextArtifact,
     PDFNativeTextExtractionOptions,
     PDFNativeTextExtractor,
+    PDFNativeVectorArtifact,
+    PDFNativeVectorExtractor,
+    PDFNativeVectorOptions,
     PDFTechnicalInspection,
     PDFTechnicalInspector,
     PDFTypographyArtifact,
@@ -72,10 +80,12 @@ class DocumentEngine:
     registry: CapabilityRegistry = field(default_factory=CapabilityRegistry)
     pdf_provider_registry: PDFProviderRegistry = field(default_factory=PDFProviderRegistry)
     pdf_technical_inspector: PDFTechnicalInspector | None = None
+    pdf_interactive_extractor: PDFInteractiveExtractor | None = None
     pdf_internal_structure_mapper: PDFInternalStructureMapper | None = None
     pdf_native_image_extractor: PDFNativeImageExtractor | None = None
     pdf_typography_resolver: PDFTypographyResolver | None = None
     pdf_native_text_extractor: PDFNativeTextExtractor | None = None
+    pdf_native_vector_extractor: PDFNativeVectorExtractor | None = None
     runtime: LocalRuntime = field(default_factory=LocalRuntime)
     inspect_document: InspectDocument | None = None
     parse_document: ParseDocument | None = None
@@ -100,10 +110,12 @@ class DocumentEngine:
         pdf_providers: tuple[PDFProvider, ...] = (),
         pdf_provider_registry: PDFProviderRegistry | None = None,
         pdf_technical_inspector: PDFTechnicalInspector | None = None,
+        pdf_interactive_extractor: PDFInteractiveExtractor | None = None,
         pdf_internal_structure_mapper: PDFInternalStructureMapper | None = None,
         pdf_native_image_extractor: PDFNativeImageExtractor | None = None,
         pdf_typography_resolver: PDFTypographyResolver | None = None,
         pdf_native_text_extractor: PDFNativeTextExtractor | None = None,
+        pdf_native_vector_extractor: PDFNativeVectorExtractor | None = None,
         pdf: PDFProviderSettings | None = None,
         data_directory: str | Path | None = None,
         job_database_path: str | Path | None = None,
@@ -153,6 +165,9 @@ class DocumentEngine:
         technical_inspector = pdf_technical_inspector or DefaultPDFTechnicalInspector(
             pdf_registry
         )
+        interactive_extractor = pdf_interactive_extractor or DefaultPDFInteractiveExtractor(
+            pdf_registry
+        )
         internal_structure_mapper = (
             pdf_internal_structure_mapper
             or DefaultPDFInternalStructureMapper(pdf_registry)
@@ -165,6 +180,9 @@ class DocumentEngine:
         )
         native_text_extractor = pdf_native_text_extractor or DefaultPDFNativeTextExtractor(
             pdf_registry
+        )
+        native_vector_extractor = (
+            pdf_native_vector_extractor or DefaultPDFNativeVectorExtractor(pdf_registry)
         )
         ingest_document = IngestDocument.local(
             engine_config.data_directory,
@@ -187,10 +205,12 @@ class DocumentEngine:
             registry=registry,
             pdf_provider_registry=pdf_registry,
             pdf_technical_inspector=technical_inspector,
+            pdf_interactive_extractor=interactive_extractor,
             pdf_internal_structure_mapper=internal_structure_mapper,
             pdf_native_image_extractor=native_image_extractor,
             pdf_typography_resolver=typography_resolver,
             pdf_native_text_extractor=native_text_extractor,
+            pdf_native_vector_extractor=native_vector_extractor,
             runtime=runtime,
             inspect_document=InspectDocument(service),
             parse_document=ParseDocument(service),
@@ -357,6 +377,40 @@ class DocumentEngine:
             options,
         )
         self._log("engine.pdf_native_text.completed")
+        return result
+
+    async def extract_pdf_native_vectors(
+        self,
+        source: DocumentInput,
+        *,
+        options: PDFNativeVectorOptions | None = None,
+    ) -> PDFNativeVectorArtifact:
+        await self._ensure_running()
+        if self.pdf_native_vector_extractor is None:
+            raise ConfigurationError("PDF native vector extraction is not available")
+        self._log("engine.pdf_native_vectors.started")
+        result = await self.pdf_native_vector_extractor.extract(
+            self._source_from_input(source),
+            options,
+        )
+        self._log("engine.pdf_native_vectors.completed")
+        return result
+
+    async def extract_pdf_interactive(
+        self,
+        source: DocumentInput,
+        *,
+        options: PDFInteractiveExtractionOptions | None = None,
+    ) -> PDFInteractiveArtifact:
+        await self._ensure_running()
+        if self.pdf_interactive_extractor is None:
+            raise ConfigurationError("PDF interactive extraction is not available")
+        self._log("engine.pdf_interactive.started")
+        result = await self.pdf_interactive_extractor.extract(
+            self._source_from_input(source),
+            options,
+        )
+        self._log("engine.pdf_interactive.completed")
         return result
 
     async def parse(

@@ -54,8 +54,8 @@ API, biblioteca, workers e CLI nunca devem reimplementar a mesma logica.
 
 ## Proxima fase recomendada
 
-Com recursos, ocorrencias, mascaras e bytes de imagens mapeados de forma
-inicial, a proxima etapa natural e a Fase 3.8: vetores e estado grafico.
+Com vetores e estado grafico mapeados de forma inicial, a proxima etapa natural
+e a Fase 3.9: links, anotacoes, formularios e camadas.
 
 Veja o contexto detalhado em
 [block-3-native-pdf-scene.md](block-3-native-pdf-scene.md).

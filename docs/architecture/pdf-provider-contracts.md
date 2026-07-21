@@ -46,6 +46,9 @@ Fontes, tipografia e texto granular ficam em
 Imagens, mascaras e ocorrencias visuais ficam em
 [pdf-images.md](pdf-images.md) e
 [pdf-image-occurrences.md](pdf-image-occurrences.md).
+Vetores e estado grafico ficam em [pdf-vectors.md](pdf-vectors.md),
+[pdf-graphics-state.md](../specifications/pdf-graphics-state.md) e
+[pdf-clipping.md](../specifications/pdf-clipping.md).
 
 Nenhum contrato publico expoe `fitz.Document`, `fitz.Page`, retangulos,
 excecoes ou enums do PyMuPDF.
@@ -122,9 +125,11 @@ O provider PyMuPDF declara suporte real para:
   quando disponiveis.
 - extracao parcial de recursos de imagem, soft masks, bytes codificados por
   hash e ocorrencias visuais via APIs nativas do provider.
+- extracao parcial de vetores por `get_drawings()`, preservando comandos,
+  estilos, estado grafico efetivo, clipping quando exposto e ordem best effort.
 
-As capacidades finais de vetores, clipping completo, anotacoes, formularios,
-camadas e renderizacao continuam `unsupported` nesta fase, mesmo que a
+As capacidades finais de clipping completo, anotacoes, formularios, camadas e
+renderizacao continuam `unsupported` nesta fase, mesmo que a
 biblioteca subjacente tenha APIs relacionadas. Elas serao ativadas apenas quando
 o Eixo implementar e testar a fronteira correspondente.
 
@@ -202,5 +207,8 @@ Logs nao incluem bytes do documento nem senha.
 - A Fase 3.7 preserva imagens e ocorrencias como best effort, mas clipping path
   exato, inline images robustas, Form XObjects aninhados e ordem de operadores
   ainda dependem de fases posteriores.
+- A Fase 3.8 preserva vetores por desenhos efetivos do provider, mas ainda nao
+  decodifica operadores crus, ExtGState completo, Form XObjects aninhados ou
+  intersecoes geometricas complexas de clipping.
 - Concorrencia no mesmo handle e serializada por lock; documentos diferentes
   podem ser abertos por instancias independentes.

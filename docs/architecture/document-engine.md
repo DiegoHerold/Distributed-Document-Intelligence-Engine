@@ -154,6 +154,11 @@ returns `PDFNativeImageArtifact`, preserving image resources, binary
 references, masks, visual occurrences, page image layers, catalog queries and
 statistics without embedding large bytes in JSON.
 
+`extract_pdf_native_vectors(source, options=PDFNativeVectorOptions(...))`
+returns `PDFNativeVectorArtifact`, preserving vector commands, subpaths, fill
+and stroke styles, effective graphics states, clipping paths, page vector
+layers, paint order and statistics.
+
 ## Current limitation
 
 No real PDF, Excel, OCR, rendering, layout, template or semantic capability exists yet. Without registered capabilities, public methods preserve and propagate `CapabilityNotFoundError`.

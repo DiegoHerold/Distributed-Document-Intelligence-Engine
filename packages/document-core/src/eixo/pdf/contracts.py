@@ -4,10 +4,12 @@ from typing import Protocol, runtime_checkable
 
 from eixo.core import DocumentSource
 from eixo.pdf.images import PDFImageExtractionOptions, PDFNativeImageArtifact
+from eixo.pdf.interactive import PDFInteractiveArtifact, PDFInteractiveExtractionOptions
 from eixo.pdf.inspection import PDFInspectionOptions, PDFTechnicalInspection
 from eixo.pdf.native_text import PDFNativeTextArtifact, PDFNativeTextExtractionOptions
 from eixo.pdf.structure import PDFInternalMappingOptions, PDFInternalStructureArtifact
 from eixo.pdf.typography import PDFTypographyArtifact, PDFTypographyOptions
+from eixo.pdf.vectors import PDFNativeVectorArtifact, PDFNativeVectorOptions
 from eixo.pdf.models import (
     PDFBasicInfo,
     PDFOpenOptions,
@@ -180,11 +182,47 @@ class PDFNativeImageExtractor(Protocol):
         ...
 
 
+@runtime_checkable
+class PDFNativeVectorExtractor(Protocol):
+    async def extract(
+        self,
+        source: DocumentSource,
+        options: PDFNativeVectorOptions | None = None,
+    ) -> PDFNativeVectorArtifact:
+        ...
+
+    async def extract_document(
+        self,
+        document: PDFDocumentHandle,
+        options: PDFNativeVectorOptions | None = None,
+    ) -> PDFNativeVectorArtifact:
+        ...
+
+
+@runtime_checkable
+class PDFInteractiveExtractor(Protocol):
+    async def extract(
+        self,
+        source: DocumentSource,
+        options: PDFInteractiveExtractionOptions | None = None,
+    ) -> PDFInteractiveArtifact:
+        ...
+
+    async def extract_document(
+        self,
+        document: PDFDocumentHandle,
+        options: PDFInteractiveExtractionOptions | None = None,
+    ) -> PDFInteractiveArtifact:
+        ...
+
+
 __all__ = [
     "PDFDocumentHandle",
+    "PDFInteractiveExtractor",
     "PDFInternalStructureMapper",
     "PDFNativeImageExtractor",
     "PDFNativeTextExtractor",
+    "PDFNativeVectorExtractor",
     "PDFPageHandle",
     "PDFProvider",
     "PDFTechnicalInspector",

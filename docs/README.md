@@ -29,20 +29,24 @@ Este diretorio organiza o contexto, a arquitetura, as decisoes, o roadmap e os d
 23. [Recursos de imagem PDF](specifications/pdf-image-resources.md)
 24. [Mascaras de imagem PDF](specifications/pdf-image-masks.md)
 25. [Transformacoes de imagem PDF](specifications/pdf-image-transforms.md)
-26. [Capacidades do provider PDF](providers/pdf-provider-capabilities.md)
-27. [Capacidades textuais do provider PDF](providers/pdf-text-capabilities.md)
-28. [Capacidades de imagem do provider PDF](providers/pdf-image-capabilities.md)
-29. [Bloco 3 - Decomposicao nativa e cena visual de PDF](roadmap/block-3-native-pdf-scene.md)
-30. [Roadmap](roadmap/README.md)
-31. [Indice oficial de fases](roadmap/phases/README.md)
-32. [Decisoes arquiteturais](decisions/README.md)
-33. [Guia para agentes](../AGENTS.md)
-34. [Uso como biblioteca Python](guides/using-as-library.md)
-35. [Uso da API REST](guides/using-the-api.md)
-36. [Uso da CLI](guides/cli.md)
-37. [Manuseio seguro de arquivos](guides/safe-file-handling.md)
-38. [Testes de paridade](testing/parity-tests.md)
-39. [Arquivo historico](archive/README.md), quando for necessario auditar a origem das decisoes
+26. [Vetores PDF](architecture/pdf-vectors.md)
+27. [Estado grafico PDF](specifications/pdf-graphics-state.md)
+28. [Clipping PDF](specifications/pdf-clipping.md)
+29. [Capacidades do provider PDF](providers/pdf-provider-capabilities.md)
+30. [Capacidades textuais do provider PDF](providers/pdf-text-capabilities.md)
+31. [Capacidades de imagem do provider PDF](providers/pdf-image-capabilities.md)
+32. [Capacidades vetoriais do provider PDF](providers/pdf-vector-capabilities.md)
+33. [Bloco 3 - Decomposicao nativa e cena visual de PDF](roadmap/block-3-native-pdf-scene.md)
+34. [Roadmap](roadmap/README.md)
+35. [Indice oficial de fases](roadmap/phases/README.md)
+36. [Decisoes arquiteturais](decisions/README.md)
+37. [Guia para agentes](../AGENTS.md)
+38. [Uso como biblioteca Python](guides/using-as-library.md)
+39. [Uso da API REST](guides/using-the-api.md)
+40. [Uso da CLI](guides/cli.md)
+41. [Manuseio seguro de arquivos](guides/safe-file-handling.md)
+42. [Testes de paridade](testing/parity-tests.md)
+43. [Arquivo historico](archive/README.md), quando for necessario auditar a origem das decisoes
 
 ## Estrutura
 
@@ -57,6 +61,7 @@ docs/
 |   |-- pdf-native-text-model.md
 |   |-- pdf-images.md
 |   |-- pdf-image-occurrences.md
+|   |-- pdf-vectors.md
 |   |-- pdf-typography.md
 |   |-- pdf-technical-inspector.md
 |   |-- pdf-provider-contracts.md

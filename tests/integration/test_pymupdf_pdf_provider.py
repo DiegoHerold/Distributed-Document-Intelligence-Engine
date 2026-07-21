@@ -20,6 +20,8 @@ from eixo import (
     PDFMappingStatus,
     PDFNativeTextExtractionOptions,
     PDFNativeTextVisibility,
+    PDFNativeVectorOptions,
+    PDFPathCommandType,
     PDFOpenOptions,
     PDFPasswordRequiredError,
     PDFProbeOptions,
@@ -31,6 +33,9 @@ from eixo import (
     PDFSecurityStatus,
     PDFTechnicalProfile,
     PDFTypographyOptions,
+    PDFVectorPaintIntent,
+    PDFVectorShapeClassification,
+    PDFVectorVisibility,
 )
 from eixo.providers.pdf.pymupdf import PYMUPDF_PROVIDER_ID, PyMuPDFPDFProvider
 
@@ -407,6 +412,65 @@ def test_document_engine_extracts_pdf_native_images_with_fake_backend() -> None:
     asyncio.run(run())
 
 
+def test_pymupdf_provider_extracts_native_vectors_with_fake_backend() -> None:
+    async def run() -> None:
+        provider = PyMuPDFPDFProvider(_backend=FakePyMuPDFBackend())
+        source = DocumentSource.from_bytes(PDF_BYTES, filename="native-vectors.pdf")
+
+        async with await provider.open(source) as document:
+            artifact = await document.get_native_vectors(PDFNativeVectorOptions())
+
+        assert artifact.statistics.vector_path_count == 4
+        assert artifact.statistics.line_count == 1
+        assert artifact.statistics.rectangle_count == 1
+        assert artifact.statistics.curve_count == 1
+        assert artifact.statistics.clipping_path_count == 1
+        line = artifact.vector_paths[0]
+        rectangle = artifact.vector_paths[1]
+        curve = artifact.vector_paths[2]
+        clipping = artifact.vector_paths[3]
+        assert line.stroke_style is not None
+        assert line.stroke_style.declared_width == 2.0
+        assert line.stroke_style.dash_array == (3.0, 1.0)
+        assert line.stroke_style.opacity == 0.5
+        assert rectangle.fill_style is not None
+        assert rectangle.shape_classification == PDFVectorShapeClassification.RECTANGLE
+        assert rectangle.signals[0].signal_type == "possible_background_shape"
+        assert curve.commands[0].command_type == PDFPathCommandType.CURVE_TO
+        assert curve.commands[0].control_points
+        assert curve.paint_intent == PDFVectorPaintIntent.FILL_AND_STROKE
+        assert curve.fill_style is not None
+        assert curve.fill_style.blend_mode == "Multiply"
+        assert clipping.paint_intent == PDFVectorPaintIntent.CLIPPING
+        assert clipping.visibility == PDFVectorVisibility.NOT_PAINTED
+        assert artifact.page_layers[0].clipping_path_ids
+        assert artifact.graphics_states[0].partially_resolved is True
+        assert "FakePage" not in str(artifact.to_dict())
+
+    asyncio.run(run())
+
+
+def test_document_engine_extracts_pdf_native_vectors_with_fake_backend() -> None:
+    async def run() -> None:
+        provider = PyMuPDFPDFProvider(_backend=FakePyMuPDFBackend())
+        engine = DocumentEngine.local(
+            pdf_providers=(provider,),
+            pdf=PDFProviderSettings(default_provider=PYMUPDF_PROVIDER_ID),
+        )
+
+        try:
+            artifact = await engine.extract_pdf_native_vectors(
+                DocumentSource.from_bytes(PDF_BYTES, filename="engine-vectors.pdf")
+            )
+        finally:
+            await engine.shutdown()
+
+        assert artifact.statistics.vector_path_count == 4
+        assert artifact.page_layers[0].ordered_element_ids
+
+    asyncio.run(run())
+
+
 @dataclass(slots=True)
 class FakeRect:
     x0: float
@@ -535,8 +599,55 @@ class FakePage:
     def get_unknown_resources(self) -> list[tuple[str, str]]:
         return [("ProcSet", "PDF/Text")]
 
-    def get_drawings(self) -> list[dict[str, str]]:
-        return [{"type": "path"}]
+    def get_drawings(self) -> list[dict[str, object]]:
+        return [
+            {
+                "type": "s",
+                "items": [("l", (10.0, 10.0), (100.0, 10.0))],
+                "rect": (10.0, 10.0, 100.0, 10.0),
+                "color": (1.0, 0.0, 0.0),
+                "width": 2.0,
+                "lineCap": 1,
+                "lineJoin": 2,
+                "dashes": "[3 1] 0",
+                "stroke_opacity": 0.5,
+                "seqno": 10,
+            },
+            {
+                "type": "f",
+                "items": [("re", (20.0, 20.0, 80.0, 60.0), 1)],
+                "rect": (20.0, 20.0, 80.0, 60.0),
+                "fill": (0.0, 1.0, 0.0),
+                "fill_opacity": 0.75,
+                "even_odd": False,
+                "seqno": 11,
+            },
+            {
+                "type": "fs",
+                "items": [
+                    (
+                        "c",
+                        (10.0, 100.0),
+                        (20.0, 80.0),
+                        (40.0, 120.0),
+                        (60.0, 100.0),
+                    )
+                ],
+                "rect": (10.0, 80.0, 60.0, 120.0),
+                "color": (0.0, 0.0, 1.0),
+                "fill": (1.0, 1.0, 0.0),
+                "width": 1.0,
+                "blendmode": "Multiply",
+                "seqno": 12,
+            },
+            {
+                "type": "clip",
+                "items": [("re", (0.0, 0.0, 120.0, 120.0), 1)],
+                "rect": (0.0, 0.0, 120.0, 120.0),
+                "even_odd": False,
+                "seqno": 13,
+            },
+        ]
 
     def get_links(self) -> list[dict[str, str]]:
         return [{"uri": "https://example.test"}]

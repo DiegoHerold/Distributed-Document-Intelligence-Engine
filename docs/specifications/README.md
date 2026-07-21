@@ -30,3 +30,5 @@ API, capacidades e os artefatos PDF criados no Bloco 3.
 - [pdf-image-resources.md](pdf-image-resources.md)
 - [pdf-image-masks.md](pdf-image-masks.md)
 - [pdf-image-transforms.md](pdf-image-transforms.md)
+- [pdf-graphics-state.md](pdf-graphics-state.md)
+- [pdf-clipping.md](pdf-clipping.md)

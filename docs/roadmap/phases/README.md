@@ -62,7 +62,7 @@ Contexto detalhado: [block-3-native-pdf-scene.md](../block-3-native-pdf-scene.md
 | 3.5 | Criar catalogo de fontes e tipografia | Concluida |
 | 3.6 | Extrair texto granular e hierarquia textual nativa | Concluida |
 | 3.7 | Extrair imagens, mascaras e ocorrencias | Concluida |
-| 3.8 | Extrair vetores e estado grafico | Planejada |
+| 3.8 | Extrair vetores e estado grafico | Concluida |
 | 3.9 | Extrair links, anotacoes, formularios e camadas | Planejada |
 | 3.10 | Montar a cena visual de cada pagina | Planejada |
 | 3.11 | Criar o `NativePDFSceneArtifact` | Planejada |

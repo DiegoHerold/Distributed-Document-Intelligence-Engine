@@ -4,6 +4,7 @@ import asyncio
 import importlib
 import importlib.util
 import logging
+import re
 import time
 import unicodedata
 from dataclasses import dataclass, field
@@ -56,10 +57,34 @@ from eixo.pdf import (
     PDFImageTransparency,
     PDFImageSupportStatus,
     PDFImageVisibility,
+    PDFAppearanceReference,
+    PDFAppearanceType,
+    PDFAnnotation,
+    PDFAnnotationType,
+    PDFClippingMethod,
+    PDFClippingPath,
+    PDFColorValue,
+    PDFControlState,
+    PDFDestination,
+    PDFDestinationResolver,
+    PDFDestinationType,
+    PDFEffectiveGraphicsState,
+    PDFFillStyle,
     PDFFontCatalog,
     PDFFontCapabilityMatrixEntry,
     PDFFontResource,
     PDFFontResourceDescriptor,
+    PDFGraphicsStateResolver,
+    PDFForm,
+    PDFFormField,
+    PDFFormFieldType,
+    PDFFormWidget,
+    PDFInteractiveArtifact,
+    PDFInteractiveCapabilityMatrixEntry,
+    PDFInteractiveExtractionOptions,
+    PDFInteractiveStatistics,
+    PDFInteractiveSupportStatus,
+    PDFInteractiveVisibility,
     PDFMetricSource,
     PDFNativeImageArtifact,
     PDFNativeImageStatistics,
@@ -72,6 +97,9 @@ from eixo.pdf import (
     PDFNativeTextRelationType,
     PDFNativeTextStatistics,
     PDFNativeTextVisibility,
+    PDFNativeVectorArtifact,
+    PDFNativeVectorOptions,
+    PDFNativeVectorStatistics,
     PDFPageNativeTextLayer,
     PDFTextBaseline,
     PDFTextColor,
@@ -98,7 +126,12 @@ from eixo.pdf import (
     PDFPageGeometry,
     PDFPageHandle,
     PDFPageImageLayer,
+    PDFPageInteractiveLayer,
     PDFPageReference,
+    PDFPageVectorLayer,
+    PDFPathCommand,
+    PDFPathCommandType,
+    PDFPathFillRule,
     PDFPageTechnicalHints,
     PDFProbeOptions,
     PDFProbeResult,
@@ -108,6 +141,7 @@ from eixo.pdf import (
     PDFProviderDescriptor,
     PDFProviderProvenance,
     PDFProviderSupportStatus,
+    PDFResolutionStatus,
     PDFResourceCatalog,
     PDFResourceReference,
     PDFResourceScope,
@@ -115,11 +149,38 @@ from eixo.pdf import (
     PDFUnknownResource,
     PDFXObjectResource,
     PDFProviderRegistry,
+    PDFLayer,
+    PDFLayerConfiguration,
+    PDFLayerMembership,
+    PDFLink,
+    PDFLinkType,
+    PDFMarkedContentScope,
+    PDFStrokeStyle,
     PDFSupportLevel,
+    PDFVectorCapabilityMatrixEntry,
+    PDFVectorExtractionMethod,
+    PDFVectorPaintIntent,
+    PDFVectorPath,
+    PDFVectorShapeClassification,
+    PDFVectorSignal,
+    PDFVectorSubpath,
+    PDFVectorSupportStatus,
+    PDFVectorVisibility,
     ProviderLimitation,
+    annotation_id,
+    appearance_id,
     canonical_pdf_page_geometry,
+    classify_vector_shape,
+    clipping_path_id,
+    destination_id,
+    effective_graphics_state_id,
+    field_id,
+    form_id,
     image_binary_id,
     image_occurrence_id,
+    interactive_statistics,
+    layer_id,
+    link_id,
     native_baseline_id,
     native_block_id,
     native_character_id,
@@ -127,9 +188,14 @@ from eixo.pdf import (
     native_line_id,
     native_span_id,
     native_word_id,
+    paint_order_from_provider,
     resource_id,
     sha256_hex,
     typography_style_id,
+    vector_path_id,
+    vector_statistics,
+    vector_subpath_id,
+    widget_id,
 )
 
 logger = logging.getLogger(__name__)
@@ -193,18 +259,18 @@ class PyMuPDFPDFProvider:
             supports_link_inspection=PDFSupportLevel.PARTIAL,
             supports_annotation_inspection=PDFSupportLevel.PARTIAL,
             supports_form_inspection=PDFSupportLevel.PARTIAL,
-            supports_layer_inspection=PDFSupportLevel.UNSUPPORTED,
+            supports_layer_inspection=PDFSupportLevel.PARTIAL,
             supports_text_extraction=PDFSupportLevel.PARTIAL,
             supports_glyph_extraction=PDFSupportLevel.PARTIAL,
             supports_word_extraction=PDFSupportLevel.PARTIAL,
             supports_native_blocks=PDFSupportLevel.PARTIAL,
             supports_image_extraction=PDFSupportLevel.PARTIAL,
             supports_image_occurrences=PDFSupportLevel.PARTIAL,
-            supports_vector_extraction=PDFSupportLevel.UNSUPPORTED,
-            supports_clipping=PDFSupportLevel.UNSUPPORTED,
-            supports_annotations=PDFSupportLevel.UNSUPPORTED,
-            supports_forms=PDFSupportLevel.UNSUPPORTED,
-            supports_layers=PDFSupportLevel.UNSUPPORTED,
+            supports_vector_extraction=PDFSupportLevel.PARTIAL,
+            supports_clipping=PDFSupportLevel.PARTIAL,
+            supports_annotations=PDFSupportLevel.PARTIAL,
+            supports_forms=PDFSupportLevel.PARTIAL,
+            supports_layers=PDFSupportLevel.PARTIAL,
             supports_content_streams=PDFSupportLevel.PARTIAL,
             supports_object_references=PDFSupportLevel.PARTIAL,
             supports_embedded_fonts=PDFSupportLevel.PARTIAL,
@@ -529,6 +595,44 @@ class PyMuPDFPDFDocumentHandle:
             )
             return await asyncio.to_thread(
                 _native_images_from_document,
+                self,
+                opts,
+                structure,
+            )
+
+    async def get_native_vectors(
+        self,
+        options: PDFNativeVectorOptions | None = None,
+        source_structure_artifact: PDFInternalStructureArtifact | None = None,
+    ) -> PDFNativeVectorArtifact:
+        self._ensure_open()
+        opts = options or PDFNativeVectorOptions()
+        async with self._lock:
+            structure = source_structure_artifact or _internal_structure_from_document(
+                self,
+                PDFInternalMappingOptions(),
+            )
+            return await asyncio.to_thread(
+                _native_vectors_from_document,
+                self,
+                opts,
+                structure,
+            )
+
+    async def get_native_interactive(
+        self,
+        options: PDFInteractiveExtractionOptions | None = None,
+        source_structure_artifact: PDFInternalStructureArtifact | None = None,
+    ) -> PDFInteractiveArtifact:
+        self._ensure_open()
+        opts = options or PDFInteractiveExtractionOptions()
+        async with self._lock:
+            structure = source_structure_artifact or _internal_structure_from_document(
+                self,
+                PDFInternalMappingOptions(),
+            )
+            return await asyncio.to_thread(
+                _interactive_from_document,
                 self,
                 opts,
                 structure,
@@ -1803,6 +1907,791 @@ def _image_statistics(catalog: PDFImageCatalog) -> PDFNativeImageStatistics:
             1
             for binary in catalog.binary_representations
             if binary.representation == PDFImageBinaryRepresentation.NORMALIZED_EXPORT
+        ),
+    )
+
+
+def _native_vectors_from_document(
+    handle: PyMuPDFPDFDocumentHandle,
+    options: PDFNativeVectorOptions,
+    structure: PDFInternalStructureArtifact,
+) -> PDFNativeVectorArtifact:
+    warnings: list[EixoWarning] = []
+    vector_paths: list[PDFVectorPath] = []
+    clipping_paths: list[PDFClippingPath] = []
+    graphics_states: list[PDFEffectiveGraphicsState] = []
+    page_layers: list[PDFPageVectorLayer] = []
+    unresolved_operations: list[str] = []
+    for page_index in _selected_pages(handle.page_count, options.page_selection):
+        page = handle.document.load_page(page_index)
+        page_reference = _page_reference_for_index(structure, page_index)
+        layer = _vector_layer_for_page(
+            handle,
+            page,
+            page_reference,
+            options,
+            len(vector_paths),
+            len(clipping_paths),
+            len(graphics_states),
+        )
+        vector_paths.extend(layer[0])
+        clipping_paths.extend(layer[1])
+        graphics_states.extend(layer[2])
+        unresolved_operations.extend(layer[3])
+        warnings.extend(layer[4])
+        page_layers.append(layer[5])
+    vectors = tuple(vector_paths)
+    clips = tuple(clipping_paths)
+    return PDFNativeVectorArtifact(
+        artifact_version=ContractVersion("1.0.0"),
+        provider=handle.descriptor,
+        document_id=structure.document_id,
+        source_structure_artifact=structure,
+        graphics_states=tuple(graphics_states),
+        vector_paths=vectors,
+        clipping_paths=clips,
+        page_layers=tuple(page_layers),
+        statistics=vector_statistics(
+            vectors,
+            clips,
+            unresolved_operation_count=len(unresolved_operations),
+        ),
+        capability_matrix=_vector_capability_matrix(),
+        warnings=tuple(warnings),
+        limitations=_vector_limitations(handle.descriptor),
+        provenance=_provenance(
+            handle.descriptor,
+            operation="extract_native_vectors",
+            source=handle.resolved,
+            options=options.safe_options(),
+        ),
+    )
+
+
+def _vector_layer_for_page(
+    handle: PyMuPDFPDFDocumentHandle,
+    page: object,
+    page_reference: PDFPageReference,
+    options: PDFNativeVectorOptions,
+    first_vector_index: int,
+    first_clip_index: int,
+    first_state_index: int,
+) -> tuple[
+    list[PDFVectorPath],
+    list[PDFClippingPath],
+    list[PDFEffectiveGraphicsState],
+    list[str],
+    list[EixoWarning],
+    PDFPageVectorLayer,
+]:
+    drawings = _vector_drawings(page)
+    if options.max_paths_per_page is not None:
+        drawings = drawings[: options.max_paths_per_page]
+    page_box = _page_bbox(page)
+    vectors: list[PDFVectorPath] = []
+    clips: list[PDFClippingPath] = []
+    states: list[PDFEffectiveGraphicsState] = []
+    unresolved_operations: list[str] = []
+    warnings: list[EixoWarning] = []
+    ordered_ids: list[str] = []
+    current_clip_id: str | None = None
+    for local_index, drawing in enumerate(drawings):
+        vector_index = first_vector_index + local_index
+        state_index = first_state_index + len(states)
+        vector, state, local_warnings = _vector_path_from_drawing(
+            handle,
+            drawing,
+            page_reference,
+            page_box,
+            options,
+            local_index,
+            vector_index,
+            state_index,
+            current_clip_id,
+        )
+        warnings.extend(local_warnings)
+        if not vector.operation_references:
+            unresolved_operations.append(vector.vector_id)
+        states.append(state)
+        if vector.paint_intent == PDFVectorPaintIntent.CLIPPING:
+            clip_index = first_clip_index + len(clips)
+            clip = _clip_path_from_vector(
+                vector,
+                page_reference,
+                clip_index,
+                current_clip_id,
+                handle,
+                options,
+            )
+            clips.append(clip)
+            current_clip_id = clip.clip_path_id
+            ordered_ids.append(clip.clip_path_id)
+            if options.include_clipping_paths:
+                vectors.append(vector)
+        elif (
+            vector.visibility != PDFVectorVisibility.VISIBLE
+            and not options.include_invisible_vectors
+        ):
+            continue
+        else:
+            vectors.append(vector)
+            ordered_ids.append(vector.vector_id)
+    layer = PDFPageVectorLayer(
+        page_reference=page_reference,
+        vector_ids=tuple(vector.vector_id for vector in vectors),
+        clipping_path_ids=tuple(clip.clip_path_id for clip in clips),
+        ordered_element_ids=tuple(ordered_ids),
+        unresolved_operations=tuple(unresolved_operations),
+        warnings=tuple(warnings),
+        provenance=_provenance(
+            handle.descriptor,
+            operation="extract_native_vectors.page",
+            source=handle.resolved,
+            options=options.safe_options(),
+            page_index=page_reference.page_index,
+        ),
+    )
+    return vectors, clips, states, unresolved_operations, warnings, layer
+
+
+def _vector_path_from_drawing(
+    handle: PyMuPDFPDFDocumentHandle,
+    drawing: dict[str, object],
+    page_reference: PDFPageReference,
+    page_box: BoundingBox | None,
+    options: PDFNativeVectorOptions,
+    local_index: int,
+    vector_index: int,
+    state_index: int,
+    current_clip_id: str | None,
+) -> tuple[PDFVectorPath, PDFEffectiveGraphicsState, tuple[EixoWarning, ...]]:
+    vector_id = vector_path_id(page_reference.page_index, vector_index)
+    warnings: list[EixoWarning] = []
+    commands = _vector_commands_from_drawing(drawing, vector_id, options, warnings)
+    subpaths = _vector_subpaths(vector_id, commands, handle, page_reference)
+    box = _drawing_bbox(drawing, commands)
+    normalized = _normalized_image_box(box, page_box)
+    paint_intent = _vector_paint_intent(drawing)
+    fill_style = _fill_style_from_drawing(drawing, paint_intent)
+    stroke_style = _stroke_style_from_drawing(drawing, paint_intent)
+    state = _graphics_state_from_drawing(
+        drawing,
+        page_reference,
+        state_index,
+        fill_style,
+        stroke_style,
+        current_clip_id,
+        handle,
+    )
+    transform = _matrix_from_value(drawing.get("matrix")) or AffineMatrix.identity()
+    try:
+        inverse = transform.inverse()
+    except Exception:
+        inverse = None
+        warnings.append(
+            EixoWarning(
+                code="transform_invalid",
+                message="Vector transform could not be inverted.",
+                scope=vector_id,
+            )
+        )
+    visibility = _vector_visibility(
+        box,
+        page_box,
+        paint_intent,
+        fill_style,
+        stroke_style,
+    )
+    vector = PDFVectorPath(
+        vector_id=vector_id,
+        page_id=page_reference.stable_id,
+        subpaths=subpaths,
+        commands=commands,
+        bounding_box=box,
+        normalized_bounding_box=normalized,
+        local_transform=transform,
+        effective_transform=transform,
+        inverse_transform=inverse,
+        fill_style=fill_style,
+        stroke_style=stroke_style,
+        paint_intent=paint_intent,
+        shape_classification=classify_vector_shape(commands, subpaths),
+        graphics_state_id=state.graphics_state_id,
+        clip_path_reference=current_clip_id,
+        paint_order=_vector_paint_order(drawing, local_index),
+        visibility=visibility,
+        fidelity=PDFVectorSupportStatus.PROVIDER_DERIVED,
+        signals=_vector_signals(commands, box, paint_intent),
+        warnings=tuple(warnings),
+        provenance=_provenance(
+            handle.descriptor,
+            operation="extract_native_vectors.path",
+            source=handle.resolved,
+            options={},
+            page_index=page_reference.page_index,
+        ),
+    )
+    return vector, state, tuple(warnings)
+
+
+def _vector_drawings(page: object) -> tuple[dict[str, object], ...]:
+    drawings = _call(page, "get_drawings")
+    if isinstance(drawings, list):
+        return tuple(item for item in drawings if isinstance(item, dict))
+    return ()
+
+
+def _vector_commands_from_drawing(
+    drawing: dict[str, object],
+    vector_id: str,
+    options: PDFNativeVectorOptions,
+    warnings: list[EixoWarning],
+) -> tuple[PDFPathCommand, ...]:
+    items = drawing.get("items", ())
+    if not isinstance(items, (list, tuple)):
+        warnings.append(
+            EixoWarning(
+                code="vector_operation_unresolved",
+                message="Provider drawing did not expose path items.",
+                scope=vector_id,
+            )
+        )
+        return ()
+    commands: list[PDFPathCommand] = []
+    for item in items:
+        if options.max_commands_per_path is not None and (
+            len(commands) >= options.max_commands_per_path
+        ):
+            warnings.append(
+                EixoWarning(
+                    code="path_command_limit_reached",
+                    message="Vector path exceeded the configured command limit.",
+                    scope=vector_id,
+                )
+            )
+            break
+        command = _path_command_from_item(item, len(commands))
+        if command is None:
+            warnings.append(
+                EixoWarning(
+                    code="vector_operation_unresolved",
+                    message="Provider drawing item could not be mapped to a path command.",
+                    scope=vector_id,
+                )
+            )
+            continue
+        commands.append(command)
+    return tuple(commands)
+
+
+def _path_command_from_item(
+    item: object,
+    command_index: int,
+) -> PDFPathCommand | None:
+    if not isinstance(item, (list, tuple)) or not item:
+        return None
+    op = str(item[0])
+    if op == "m" and len(item) >= 2:
+        point = _vector_point(item[1])
+        return _command(PDFPathCommandType.MOVE_TO, command_index, (point,))
+    if op == "l" and len(item) >= 3:
+        start = _vector_point(item[1])
+        end = _vector_point(item[2])
+        return _command(PDFPathCommandType.LINE_TO, command_index, (start, end))
+    if op == "c" and len(item) >= 5:
+        start = _vector_point(item[1])
+        control_one = _vector_point(item[2])
+        control_two = _vector_point(item[3])
+        end = _vector_point(item[4])
+        return _command(
+            PDFPathCommandType.CURVE_TO,
+            command_index,
+            (start, end),
+            (control_one, control_two),
+        )
+    if op == "re" and len(item) >= 2:
+        box = _box(item[1])
+        if box is None:
+            return None
+        bbox = BoundingBox(box[0], box[1], box[2], box[3])
+        return PDFPathCommand(
+            command_type=PDFPathCommandType.RECTANGLE,
+            command_index=command_index,
+            points=bbox.corners,
+            original_points=bbox.corners,
+            canonical_points=bbox.corners,
+            bounding_box=bbox,
+        )
+    if op in {"h", "closePath"}:
+        return PDFPathCommand(
+            command_type=PDFPathCommandType.CLOSE_PATH,
+            command_index=command_index,
+        )
+    if op == "qu" and len(item) >= 2:
+        points = _quad_points(item[1])
+        return _command(PDFPathCommandType.LINE_TO, command_index, points)
+    return None
+
+
+def _command(
+    command_type: PDFPathCommandType,
+    command_index: int,
+    points: tuple[Point | None, ...] = (),
+    control_points: tuple[Point | None, ...] = (),
+) -> PDFPathCommand | None:
+    clean_points = tuple(point for point in points if point is not None)
+    clean_controls = tuple(point for point in control_points if point is not None)
+    all_points = clean_points + clean_controls
+    box = BoundingBox.from_points(all_points) if all_points else None
+    return PDFPathCommand(
+        command_type=command_type,
+        command_index=command_index,
+        points=clean_points,
+        control_points=clean_controls,
+        original_points=clean_points,
+        canonical_points=clean_points,
+        bounding_box=box,
+    )
+
+
+def _vector_subpaths(
+    vector_id: str,
+    commands: tuple[PDFPathCommand, ...],
+    handle: PyMuPDFPDFDocumentHandle,
+    page_reference: PDFPageReference,
+) -> tuple[PDFVectorSubpath, ...]:
+    if not commands:
+        return ()
+    subpaths: list[PDFVectorSubpath] = []
+    current: list[PDFPathCommand] = []
+    for command in commands:
+        if command.command_type == PDFPathCommandType.MOVE_TO and current:
+            subpaths.append(
+                _subpath_from_commands(vector_id, len(subpaths), tuple(current), handle)
+            )
+            current = []
+        current.append(command)
+    if current:
+        subpaths.append(
+            _subpath_from_commands(vector_id, len(subpaths), tuple(current), handle)
+        )
+    return tuple(subpaths)
+
+
+def _subpath_from_commands(
+    vector_id: str,
+    subpath_index: int,
+    commands: tuple[PDFPathCommand, ...],
+    handle: PyMuPDFPDFDocumentHandle,
+) -> PDFVectorSubpath:
+    points = tuple(point for command in commands for point in command.points)
+    box = BoundingBox.from_points(points) if points else None
+    closed = any(command.command_type == PDFPathCommandType.CLOSE_PATH for command in commands)
+    return PDFVectorSubpath(
+        subpath_id=vector_subpath_id(vector_id, subpath_index),
+        commands=commands,
+        start_point=points[0] if points else None,
+        end_point=points[-1] if points else None,
+        closed=closed,
+        bounding_box=box,
+        order=subpath_index,
+        provenance=_provenance(
+            handle.descriptor,
+            operation="extract_native_vectors.subpath",
+            source=handle.resolved,
+            options={},
+        ),
+    )
+
+
+def _drawing_bbox(
+    drawing: dict[str, object],
+    commands: tuple[PDFPathCommand, ...],
+) -> BoundingBox | None:
+    box_tuple = _box(drawing.get("rect"))
+    if box_tuple is not None:
+        return BoundingBox(box_tuple[0], box_tuple[1], box_tuple[2], box_tuple[3])
+    boxes = tuple(command.bounding_box for command in commands if command.bounding_box)
+    if not boxes:
+        return None
+    box = boxes[0]
+    for other in boxes[1:]:
+        box = box.union(other)
+    return box
+
+
+def _vector_paint_intent(drawing: dict[str, object]) -> PDFVectorPaintIntent:
+    value = str(drawing.get("type") or "").lower()
+    if value in {"clip", "clipping"}:
+        return PDFVectorPaintIntent.CLIPPING
+    has_fill = drawing.get("fill") is not None or "f" in value
+    has_stroke = drawing.get("color") is not None or "s" in value
+    if has_fill and has_stroke:
+        return PDFVectorPaintIntent.FILL_AND_STROKE
+    if has_fill:
+        return PDFVectorPaintIntent.FILL
+    if has_stroke:
+        return PDFVectorPaintIntent.STROKE
+    return PDFVectorPaintIntent.NONE
+
+
+def _fill_style_from_drawing(
+    drawing: dict[str, object],
+    intent: PDFVectorPaintIntent,
+) -> PDFFillStyle | None:
+    enabled = intent in {PDFVectorPaintIntent.FILL, PDFVectorPaintIntent.FILL_AND_STROKE}
+    if not enabled and drawing.get("fill") is None:
+        return None
+    return PDFFillStyle(
+        enabled=enabled,
+        color=_color_value(drawing.get("fill")),
+        opacity=_float_from_keys(drawing, "fill_opacity", "fillOpacity", "opacity"),
+        blend_mode=_text_from_keys(drawing, "blendmode", "blend_mode"),
+        fill_rule=_fill_rule(drawing),
+    )
+
+
+def _stroke_style_from_drawing(
+    drawing: dict[str, object],
+    intent: PDFVectorPaintIntent,
+) -> PDFStrokeStyle | None:
+    enabled = intent in {PDFVectorPaintIntent.STROKE, PDFVectorPaintIntent.FILL_AND_STROKE}
+    if not enabled and drawing.get("color") is None and drawing.get("width") is None:
+        return None
+    dash = _dash_values(drawing.get("dashes"))
+    return PDFStrokeStyle(
+        enabled=enabled,
+        color=_color_value(drawing.get("color")),
+        declared_width=_float_from_keys(drawing, "width", "line_width"),
+        effective_width=_float_from_keys(drawing, "width", "line_width"),
+        line_cap=_int_or_first(drawing.get("lineCap") or drawing.get("line_cap")),
+        line_join=_int_or_first(drawing.get("lineJoin") or drawing.get("line_join")),
+        miter_limit=_float_from_keys(drawing, "miterLimit", "miter_limit"),
+        dash_array=dash[0],
+        dash_phase=dash[1],
+        opacity=_float_from_keys(
+            drawing,
+            "stroke_opacity",
+            "strokeOpacity",
+            "opacity",
+        ),
+        blend_mode=_text_from_keys(drawing, "blendmode", "blend_mode"),
+    )
+
+
+def _graphics_state_from_drawing(
+    drawing: dict[str, object],
+    page_reference: PDFPageReference,
+    state_index: int,
+    fill_style: PDFFillStyle | None,
+    stroke_style: PDFStrokeStyle | None,
+    current_clip_id: str | None,
+    handle: PyMuPDFPDFDocumentHandle,
+) -> PDFEffectiveGraphicsState:
+    state = PDFGraphicsStateResolver().update(
+        graphics_state_id=effective_graphics_state_id(
+            page_reference.page_index,
+            state_index,
+        ),
+        current_transform=_matrix_from_value(drawing.get("matrix"))
+        or AffineMatrix.identity(),
+        stroke_width=stroke_style.declared_width if stroke_style else None,
+        line_cap=stroke_style.line_cap if stroke_style else None,
+        line_join=stroke_style.line_join if stroke_style else None,
+        miter_limit=stroke_style.miter_limit if stroke_style else None,
+        dash_array=stroke_style.dash_array if stroke_style else (),
+        dash_phase=stroke_style.dash_phase if stroke_style else None,
+        fill_color=fill_style.color if fill_style else None,
+        stroke_color=stroke_style.color if stroke_style else None,
+        fill_opacity=fill_style.opacity if fill_style else None,
+        stroke_opacity=stroke_style.opacity if stroke_style else None,
+        blend_mode=(
+            fill_style.blend_mode
+            if fill_style and fill_style.blend_mode
+            else stroke_style.blend_mode
+            if stroke_style
+            else None
+        ),
+        active_clip_path_id=current_clip_id,
+        partially_resolved=True,
+        provenance=_provenance(
+            handle.descriptor,
+            operation="extract_native_vectors.graphics_state",
+            source=handle.resolved,
+            options={},
+            page_index=page_reference.page_index,
+        ),
+    ).current_state
+    return state
+
+
+def _clip_path_from_vector(
+    vector: PDFVectorPath,
+    page_reference: PDFPageReference,
+    clip_index: int,
+    parent_clip_id: str | None,
+    handle: PyMuPDFPDFDocumentHandle,
+    options: PDFNativeVectorOptions,
+) -> PDFClippingPath:
+    clip_id = clipping_path_id(page_reference.page_index, clip_index)
+    chain = (parent_clip_id,) if parent_clip_id else ()
+    return PDFClippingPath(
+        clip_path_id=clip_id,
+        page_id=page_reference.stable_id,
+        subpaths=vector.subpaths,
+        fill_rule=vector.fill_style.fill_rule
+        if vector.fill_style is not None
+        else PDFPathFillRule.UNKNOWN,
+        transform=vector.effective_transform,
+        bounding_box=vector.bounding_box,
+        parent_clip_path_id=parent_clip_id,
+        clip_chain=chain + (clip_id,),
+        effective_clip_bounds=vector.bounding_box,
+        operation_references=vector.operation_references,
+        parent_form_reference=vector.parent_form_reference,
+        form_occurrence_path=vector.form_occurrence_path,
+        clip_method=PDFClippingMethod.PROVIDER_CLIP,
+        clip_confidence=0.5,
+        provenance=_provenance(
+            handle.descriptor,
+            operation="extract_native_vectors.clip",
+            source=handle.resolved,
+            options=options.safe_options(),
+            page_index=page_reference.page_index,
+        ),
+    )
+
+
+def _vector_visibility(
+    box: BoundingBox | None,
+    page_box: BoundingBox | None,
+    intent: PDFVectorPaintIntent,
+    fill_style: PDFFillStyle | None,
+    stroke_style: PDFStrokeStyle | None,
+) -> PDFVectorVisibility:
+    if intent == PDFVectorPaintIntent.CLIPPING:
+        return PDFVectorVisibility.NOT_PAINTED
+    if intent == PDFVectorPaintIntent.NONE:
+        return PDFVectorVisibility.NOT_PAINTED
+    opacities = tuple(
+        value
+        for value in (
+            fill_style.opacity if fill_style else None,
+            stroke_style.opacity if stroke_style else None,
+        )
+        if value is not None
+    )
+    if opacities and all(value == 0.0 for value in opacities):
+        return PDFVectorVisibility.ZERO_OPACITY
+    if box is None or page_box is None:
+        return PDFVectorVisibility.UNKNOWN
+    intersection = box.intersection(page_box)
+    if intersection is None:
+        return PDFVectorVisibility.OUTSIDE_CROP_BOX
+    if intersection.almost_equals(box):
+        return PDFVectorVisibility.VISIBLE
+    return PDFVectorVisibility.PARTIALLY_VISIBLE
+
+
+def _vector_signals(
+    commands: tuple[PDFPathCommand, ...],
+    box: BoundingBox | None,
+    intent: PDFVectorPaintIntent,
+) -> tuple[PDFVectorSignal, ...]:
+    if box is None or intent == PDFVectorPaintIntent.CLIPPING:
+        return ()
+    if box.height <= 1.0 or box.width <= 1.0:
+        return (
+            PDFVectorSignal(
+                signal_type="possible_separator",
+                method=PDFVectorExtractionMethod.HEURISTIC,
+                confidence=0.5,
+            ),
+        )
+    if any(command.command_type == PDFPathCommandType.RECTANGLE for command in commands):
+        return (
+            PDFVectorSignal(
+                signal_type="possible_background_shape",
+                method=PDFVectorExtractionMethod.HEURISTIC,
+                confidence=0.4,
+            ),
+        )
+    return ()
+
+
+def _vector_paint_order(
+    drawing: dict[str, object],
+    fallback_index: int,
+) -> PDFPaintOrder:
+    seqno = _int_or_first(drawing.get("seqno"))
+    if seqno is not None:
+        return paint_order_from_provider(seqno)
+    return paint_order_from_provider(fallback_index)
+
+
+def _color_value(value: object) -> PDFColorValue | None:
+    if not isinstance(value, (list, tuple)):
+        return None
+    try:
+        components = tuple(float(item) for item in value)
+    except (TypeError, ValueError):
+        return None
+    if len(components) == 1:
+        space = "DeviceGray"
+        rgb = (components[0], components[0], components[0])
+    elif len(components) == 3:
+        space = "DeviceRGB"
+        rgb = (components[0], components[1], components[2])
+    elif len(components) == 4:
+        space = "DeviceCMYK"
+        rgb = None
+    else:
+        space = "Unknown"
+        rgb = None
+    return PDFColorValue(
+        original_value=components,
+        color_space=space,
+        normalized_rgb=rgb,
+        conversion_method="provider_passthrough" if rgb else None,
+        conversion_confidence=1.0 if rgb else 0.0,
+    )
+
+
+def _fill_rule(drawing: dict[str, object]) -> PDFPathFillRule:
+    value = drawing.get("even_odd")
+    if value is True:
+        return PDFPathFillRule.EVEN_ODD
+    if value is False:
+        return PDFPathFillRule.NONZERO
+    return PDFPathFillRule.UNKNOWN
+
+
+def _dash_values(value: object) -> tuple[tuple[float, ...], float | None]:
+    if isinstance(value, (list, tuple)):
+        try:
+            return tuple(float(item) for item in value), None
+        except (TypeError, ValueError):
+            return (), None
+    if isinstance(value, str):
+        numbers = tuple(float(item) for item in re.findall(r"-?\d+(?:\.\d+)?", value))
+        if not numbers:
+            return (), None
+        return numbers[:-1], numbers[-1]
+    return (), None
+
+
+def _vector_point(value: object) -> Point | None:
+    point = _point_from_value(value)
+    if point is not None:
+        return point
+    try:
+        return Point(float(getattr(value, "x")), float(getattr(value, "y")))
+    except (TypeError, ValueError, AttributeError):
+        return None
+
+
+def _quad_points(value: object) -> tuple[Point, ...]:
+    if isinstance(value, (list, tuple)):
+        points = tuple(_vector_point(item) for item in value)
+        return tuple(point for point in points if point is not None)
+    names = ("ul", "ur", "lr", "ll")
+    points = tuple(_vector_point(getattr(value, name, None)) for name in names)
+    return tuple(point for point in points if point is not None)
+
+
+def _float_from_keys(mapping: dict[str, object], *keys: str) -> float | None:
+    for key in keys:
+        value = mapping.get(key)
+        if value is None:
+            continue
+        try:
+            return float(value)
+        except (TypeError, ValueError):
+            continue
+    return None
+
+
+def _text_from_keys(mapping: dict[str, object], *keys: str) -> str | None:
+    for key in keys:
+        value = mapping.get(key)
+        if isinstance(value, str) and value.strip():
+            return value.strip()
+    return None
+
+
+def _int_or_first(value: object) -> int | None:
+    if isinstance(value, (list, tuple)):
+        value = value[0] if value else None
+    try:
+        return int(value) if value is not None else None
+    except (TypeError, ValueError):
+        return None
+
+
+def _vector_capability_matrix() -> tuple[PDFVectorCapabilityMatrixEntry, ...]:
+    return (
+        PDFVectorCapabilityMatrixEntry(
+            information="paths",
+            support=PDFVectorSupportStatus.PROVIDER_DERIVED,
+            origin="page.get_drawings()",
+            precision="provider_path_items",
+        ),
+        PDFVectorCapabilityMatrixEntry(
+            information="lines rectangles curves",
+            support=PDFVectorSupportStatus.PARTIALLY_SUPPORTED,
+            origin="page.get_drawings().items",
+            precision="provider_command_tuples",
+        ),
+        PDFVectorCapabilityMatrixEntry(
+            information="fill stroke dash width",
+            support=PDFVectorSupportStatus.PARTIALLY_SUPPORTED,
+            origin="page.get_drawings() style keys",
+            precision="provider_effective_style",
+        ),
+        PDFVectorCapabilityMatrixEntry(
+            information="graphics state",
+            support=PDFVectorSupportStatus.PARTIALLY_SUPPORTED,
+            origin="provider effective drawing properties",
+            limitation="Raw save/restore operations are not decoded yet.",
+        ),
+        PDFVectorCapabilityMatrixEntry(
+            information="clipping",
+            support=PDFVectorSupportStatus.UNKNOWN,
+            origin="page.get_drawings()",
+            limitation="Complex clipping chains depend on provider exposure.",
+        ),
+        PDFVectorCapabilityMatrixEntry(
+            information="paint order",
+            support=PDFVectorSupportStatus.PROVIDER_DERIVED,
+            origin="seqno or drawing order",
+            precision="provider_approximation",
+        ),
+    )
+
+
+def _vector_limitations(
+    descriptor: PDFProviderDescriptor,
+) -> tuple[ProviderLimitation, ...]:
+    return descriptor.limitations + (
+        ProviderLimitation(
+            code="vector_content_stream_operations_unavailable",
+            message="Vector paths are not linked to decoded PDF operators yet.",
+            scope="content_stream",
+        ),
+        ProviderLimitation(
+            code="graphics_state_provider_derived",
+            message="Graphics state is adapted from effective provider drawing data.",
+            scope="graphics_state",
+        ),
+        ProviderLimitation(
+            code="complex_clipping_not_materialized",
+            message="Complex clipping intersections are not materialized.",
+            scope="clipping",
+        ),
+        ProviderLimitation(
+            code="form_vector_partially_mapped",
+            message="Nested Form XObject vector definitions are not decomposed separately.",
+            scope="form_xobject",
         ),
     )
 

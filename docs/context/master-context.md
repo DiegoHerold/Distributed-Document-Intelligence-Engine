@@ -147,6 +147,11 @@ ocorrencia visual, mascaras, referencias binarias, camadas por pagina, catalogo
 de imagens e artefato `PDFNativeImageArtifact`. O provider PyMuPDF entrega essa
 camada como best effort, sem rasterizar paginas e sem embutir bytes grandes em
 JSON publico.
+Vetores nativos ja possuem contratos iniciais para comandos, subpaths, caminhos,
+fill, stroke, estado grafico efetivo, clipping separado, camadas vetoriais por
+pagina e artefato `PDFNativeVectorArtifact`. A implementacao atual usa
+`get_drawings()` do PyMuPDF como fonte best effort e nao reconstrui tabelas nem
+decodifica operadores graficos crus.
 
 Detalhes oficiais do bloco estao em
 [block-3-native-pdf-scene.md](../roadmap/block-3-native-pdf-scene.md).
