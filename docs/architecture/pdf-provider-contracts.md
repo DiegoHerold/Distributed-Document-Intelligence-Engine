@@ -1,6 +1,6 @@
 # Contratos E Provider Nativo De PDF
 
-Status: Fase 3.1 implementada.
+Status: Fase 3.1 implementada. Usado pela Fase 3.2 para inspecao tecnica.
 
 ## Finalidade
 
@@ -35,6 +35,9 @@ Os contratos ficam em `eixo.pdf`:
 - `PDFPageGeometry`;
 - `ProviderLimitation`;
 - `PDFProviderProvenance`.
+
+A inspecao tecnica especializada fica em
+[pdf-technical-inspector.md](pdf-technical-inspector.md).
 
 Nenhum contrato publico expoe `fitz.Document`, `fitz.Page`, retangulos,
 excecoes ou enums do PyMuPDF.
@@ -95,13 +98,15 @@ async with await engine.pdf_provider.open(
 
 ## Capacidades Declaradas
 
-O provider PyMuPDF declara suporte real nesta fase para:
+O provider PyMuPDF declara suporte real para:
 
 - abertura de PDF;
 - autenticacao por senha;
 - acesso incremental a paginas;
 - informacoes basicas;
-- geometria basica de pagina.
+- geometria basica de pagina;
+- sinais tecnicos leves de presenca de texto, imagens, vetores, links,
+  anotacoes e formularios, usados pelo `PDFTechnicalInspector`.
 
 As capacidades de texto granular, glifos, palavras, imagens, vetores, clipping,
 content streams, objetos, fontes incorporadas, camadas e renderizacao continuam
@@ -174,7 +179,7 @@ Logs nao incluem bytes do documento nem senha.
 - PyMuPDF nao e instalado como dependencia obrigatoria.
 - `ArtifactReferenceSource` ainda depende de uma composicao futura com
   `ArtifactStore`.
-- A Fase 3.1 nao implementa inspecao tecnica completa, texto granular, imagens,
-  vetores, content streams, cena visual, preview ou renderizacao final.
+- Fases 3.1 e 3.2 nao implementam texto granular, extracao de imagens, vetores,
+  content streams, cena visual, preview ou renderizacao final.
 - Concorrencia no mesmo handle e serializada por lock; documentos diferentes
   podem ser abertos por instancias independentes.

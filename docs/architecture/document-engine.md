@@ -132,6 +132,11 @@ The active provider can be resolved through `engine.pdf_provider` when a default
 provider is configured or a single compatible provider is registered. See
 [pdf-provider-contracts.md](pdf-provider-contracts.md).
 
+`inspect_pdf(source, options=PDFInspectionOptions(...))` runs the technical PDF
+inspector over the registered provider registry and returns
+`PDFTechnicalInspection`. This is a specialized diagnostic API for native PDF
+work; the generic `inspect()` and `parse()` flows remain capability-backed.
+
 ## Current limitation
 
 No real PDF, Excel, OCR, rendering, layout, template or semantic capability exists yet. Without registered capabilities, public methods preserve and propagate `CapabilityNotFoundError`.

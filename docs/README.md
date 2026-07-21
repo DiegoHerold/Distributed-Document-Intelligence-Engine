@@ -14,17 +14,19 @@ Este diretorio organiza o contexto, a arquitetura, as decisoes, o roadmap e os d
 8. [Limites de ingestao](specifications/ingestion-limits.md)
 9. [Erros de seguranca](specifications/security-errors.md)
 10. [Contratos e provider nativo de PDF](architecture/pdf-provider-contracts.md)
-11. [Bloco 3 - Decomposicao nativa e cena visual de PDF](roadmap/block-3-native-pdf-scene.md)
-12. [Roadmap](roadmap/README.md)
-13. [Indice oficial de fases](roadmap/phases/README.md)
-14. [Decisoes arquiteturais](decisions/README.md)
-15. [Guia para agentes](../AGENTS.md)
-16. [Uso como biblioteca Python](guides/using-as-library.md)
-17. [Uso da API REST](guides/using-the-api.md)
-18. [Uso da CLI](guides/cli.md)
-19. [Manuseio seguro de arquivos](guides/safe-file-handling.md)
-20. [Testes de paridade](testing/parity-tests.md)
-21. [Arquivo historico](archive/README.md), quando for necessario auditar a origem das decisoes
+11. [PDF Technical Inspector](architecture/pdf-technical-inspector.md)
+12. [Geometria canonica](architecture/canonical-geometry.md)
+13. [Bloco 3 - Decomposicao nativa e cena visual de PDF](roadmap/block-3-native-pdf-scene.md)
+14. [Roadmap](roadmap/README.md)
+15. [Indice oficial de fases](roadmap/phases/README.md)
+16. [Decisoes arquiteturais](decisions/README.md)
+17. [Guia para agentes](../AGENTS.md)
+18. [Uso como biblioteca Python](guides/using-as-library.md)
+19. [Uso da API REST](guides/using-the-api.md)
+20. [Uso da CLI](guides/cli.md)
+21. [Manuseio seguro de arquivos](guides/safe-file-handling.md)
+22. [Testes de paridade](testing/parity-tests.md)
+23. [Arquivo historico](archive/README.md), quando for necessario auditar a origem das decisoes
 
 ## Estrutura
 
@@ -34,7 +36,9 @@ docs/
 |-- context/
 |-- architecture/
 |   |-- diagrams/
+|   |-- canonical-geometry.md
 |   |-- ingestion-security.md
+|   |-- pdf-technical-inspector.md
 |   |-- pdf-provider-contracts.md
 |   `-- persistent-local-jobs.md
 |-- decisions/

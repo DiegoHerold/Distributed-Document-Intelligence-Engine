@@ -87,6 +87,8 @@ anotacoes, camadas, ordem de content stream e fontes incorporadas.
 
 ### 3.2 - PDF Inspector tecnico
 
+Status: concluida.
+
 Criar a inspecao autoritativa especifica de PDF.
 
 Deve identificar validade estrutural, versao, quantidade de paginas, metadados,
@@ -110,7 +112,14 @@ Separacao de responsabilidade:
 - Fase 2.8 responde se e seguro tentar abrir o conteudo como PDF.
 - Fase 3.2 responde se o provider consegue abrir e descrever tecnicamente o PDF.
 
+Entrega implementada: `PDFTechnicalInspector`, `DefaultPDFTechnicalInspector`,
+`PDFInspectionOptions`, `PDFTechnicalInspection`, integracao
+`DocumentEngine.inspect_pdf()` e sinais tecnicos leves no provider PyMuPDF. Ver
+[pdf-technical-inspector.md](../architecture/pdf-technical-inspector.md).
+
 ### 3.3 - Geometria e coordenadas canonicas
+
+Status: concluida.
 
 Definir o sistema geometrico oficial do Eixo:
 
@@ -137,6 +146,11 @@ Modelos necessarios:
 A geometria deve preservar MediaBox, CropBox, BleedBox, TrimBox, ArtBox,
 rotacao, transformacoes entre sistemas, coordenadas originais, coordenadas
 canonicas, transformacao inversa, escala, inclinacao, espelhamento e translacao.
+
+Entrega implementada: `eixo.geometry`, `PageGeometry`,
+`canonical_pdf_page_geometry()`, integracao com `PDFPageGeometry`, provider
+PyMuPDF e `PDFTechnicalInspector`. Ver
+[canonical-geometry.md](../architecture/canonical-geometry.md).
 
 ### 3.4 - Recursos, objetos e content streams
 

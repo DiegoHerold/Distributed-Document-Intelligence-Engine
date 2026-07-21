@@ -9,6 +9,7 @@ from eixo.core.serialization import Serializable
 from eixo.core.timestamps import isoformat_utc, utc_now
 from eixo.core.versions import ProviderVersion
 from eixo.core.warnings import EixoWarning
+from eixo.geometry import PageGeometry
 
 
 class PDFSupportLevel(StrEnum):
@@ -52,6 +53,17 @@ class PDFProviderCapabilities(Serializable):
     supports_incremental_page_access: PDFSupportLevel = PDFSupportLevel.UNSUPPORTED
     supports_basic_info: PDFSupportLevel = PDFSupportLevel.UNSUPPORTED
     supports_page_geometry: PDFSupportLevel = PDFSupportLevel.UNSUPPORTED
+    supports_metadata_inspection: PDFSupportLevel = PDFSupportLevel.UNSUPPORTED
+    supports_security_inspection: PDFSupportLevel = PDFSupportLevel.UNSUPPORTED
+    supports_permission_inspection: PDFSupportLevel = PDFSupportLevel.UNSUPPORTED
+    supports_resource_inspection: PDFSupportLevel = PDFSupportLevel.UNSUPPORTED
+    supports_text_presence_inspection: PDFSupportLevel = PDFSupportLevel.UNSUPPORTED
+    supports_image_presence_inspection: PDFSupportLevel = PDFSupportLevel.UNSUPPORTED
+    supports_vector_presence_inspection: PDFSupportLevel = PDFSupportLevel.UNSUPPORTED
+    supports_link_inspection: PDFSupportLevel = PDFSupportLevel.UNSUPPORTED
+    supports_annotation_inspection: PDFSupportLevel = PDFSupportLevel.UNSUPPORTED
+    supports_form_inspection: PDFSupportLevel = PDFSupportLevel.UNSUPPORTED
+    supports_layer_inspection: PDFSupportLevel = PDFSupportLevel.UNSUPPORTED
     supports_text_extraction: PDFSupportLevel = PDFSupportLevel.UNSUPPORTED
     supports_glyph_extraction: PDFSupportLevel = PDFSupportLevel.UNSUPPORTED
     supports_word_extraction: PDFSupportLevel = PDFSupportLevel.UNSUPPORTED
@@ -125,6 +137,9 @@ class PDFProbeOptions(Serializable):
             "password_provided": self.password is not None,
         }
 
+    def to_dict(self) -> dict[str, Any]:
+        return self.safe_options()
+
 
 @dataclass(frozen=True, slots=True)
 class PDFOpenOptions(Serializable):
@@ -158,6 +173,9 @@ class PDFOpenOptions(Serializable):
 
     def safe_options(self) -> dict[str, Any]:
         return self.to_probe_options().safe_options()
+
+    def to_dict(self) -> dict[str, Any]:
+        return self.safe_options()
 
 
 @dataclass(frozen=True, slots=True)
@@ -254,6 +272,7 @@ class PDFPageGeometry(Serializable):
     rotation: int
     media_box: tuple[float, float, float, float] | None = None
     crop_box: tuple[float, float, float, float] | None = None
+    canonical_geometry: PageGeometry | None = None
     provenance: PDFProviderProvenance | None = None
 
     def __post_init__(self) -> None:

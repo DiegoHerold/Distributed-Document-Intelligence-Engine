@@ -36,6 +36,12 @@ from eixo.core import (
 )
 from eixo.plugins import Capability, CapabilityRegistry, ProviderDescriptor
 from eixo.pdf import PDFProvider, PDFProviderRegistry, PDFProviderSettings
+from eixo.pdf import (
+    DefaultPDFTechnicalInspector,
+    PDFInspectionOptions,
+    PDFTechnicalInspection,
+    PDFTechnicalInspector,
+)
 from eixo.runtime.local import LocalRuntime, LocalRuntimeConfig
 from eixo.engine.configuration import LocalEngineConfig
 from eixo.engine.lifecycle import EngineState
@@ -49,6 +55,7 @@ DocumentInput = DocumentSource | str | Path | bytes | bytearray | memoryview | B
 class DocumentEngine:
     registry: CapabilityRegistry = field(default_factory=CapabilityRegistry)
     pdf_provider_registry: PDFProviderRegistry = field(default_factory=PDFProviderRegistry)
+    pdf_technical_inspector: PDFTechnicalInspector | None = None
     runtime: LocalRuntime = field(default_factory=LocalRuntime)
     inspect_document: InspectDocument | None = None
     parse_document: ParseDocument | None = None
@@ -72,6 +79,7 @@ class DocumentEngine:
         capabilities: tuple[Capability[object, object], ...] = (),
         pdf_providers: tuple[PDFProvider, ...] = (),
         pdf_provider_registry: PDFProviderRegistry | None = None,
+        pdf_technical_inspector: PDFTechnicalInspector | None = None,
         pdf: PDFProviderSettings | None = None,
         data_directory: str | Path | None = None,
         job_database_path: str | Path | None = None,
@@ -118,6 +126,9 @@ class DocumentEngine:
         pdf_registry = pdf_provider_registry or PDFProviderRegistry()
         for provider in pdf_providers:
             pdf_registry.register(provider)
+        technical_inspector = pdf_technical_inspector or DefaultPDFTechnicalInspector(
+            pdf_registry
+        )
         ingest_document = IngestDocument.local(
             engine_config.data_directory,
             security_policy=engine_config.security,
@@ -138,6 +149,7 @@ class DocumentEngine:
         return cls(
             registry=registry,
             pdf_provider_registry=pdf_registry,
+            pdf_technical_inspector=technical_inspector,
             runtime=runtime,
             inspect_document=InspectDocument(service),
             parse_document=ParseDocument(service),
@@ -219,6 +231,23 @@ class DocumentEngine:
         self._log_operation_started("inspect", request.correlation_id.value)
         result = await self.inspect_document.execute(request)
         self._log_operation_completed("inspect", request.correlation_id.value)
+        return result
+
+    async def inspect_pdf(
+        self,
+        source: DocumentInput,
+        *,
+        options: PDFInspectionOptions | None = None,
+    ) -> PDFTechnicalInspection:
+        await self._ensure_running()
+        if self.pdf_technical_inspector is None:
+            raise ConfigurationError("PDF technical inspection is not available")
+        self._log("engine.pdf_inspection.started")
+        result = await self.pdf_technical_inspector.inspect(
+            self._source_from_input(source),
+            options,
+        )
+        self._log("engine.pdf_inspection.completed")
         return result
 
     async def parse(

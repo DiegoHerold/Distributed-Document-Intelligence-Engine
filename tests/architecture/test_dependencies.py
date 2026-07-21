@@ -44,6 +44,25 @@ def test_core_does_not_import_adapters_or_apps() -> None:
     assert "pymupdf" not in imports
 
 
+def test_geometry_has_no_provider_transport_or_heavy_math_imports() -> None:
+    forbidden = {
+        "fitz",
+        "pymupdf",
+        "pypdfium2",
+        "numpy",
+        "shapely",
+        "fastapi",
+        "starlette",
+        "click",
+        "typer",
+        "eixo_api",
+        "eixo_cli",
+    }
+    imports = imports_under(ROOT / "packages/document-core/src/eixo/geometry")
+
+    assert imports.isdisjoint(forbidden)
+
+
 def test_http_upload_types_stay_outside_kernel_and_application() -> None:
     forbidden_names = {"UploadFile", "Request", "FormData"}
     for base in (

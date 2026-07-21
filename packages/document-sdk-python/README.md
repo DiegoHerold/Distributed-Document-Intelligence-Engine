@@ -85,6 +85,40 @@ async with await engine.pdf_provider.open(
     geometry = await page.get_basic_geometry()
 ```
 
+For the Fase 3.2 technical inspector, use the specialized diagnostic API:
+
+```python
+from eixo import PDFInspectionOptions
+
+inspection = await engine.inspect_pdf(
+    source,
+    options=PDFInspectionOptions(max_pages_to_inspect=5),
+)
+```
+
+The result is a typed `PDFTechnicalInspection` with integrity, version, page
+summary, metadata, security, permissions, resource signals, coverage,
+provenance and processing recommendations. Passwords are never serialized; only
+`password_provided` is recorded.
+
+## Canonical Geometry
+
+The public geometry module is available as `eixo.geometry`:
+
+```python
+from eixo.geometry import AffineMatrix, BoundingBox, Size
+
+page_size = Size(width=595.0, height=842.0)
+box = BoundingBox(72.0, 100.0, 300.0, 150.0)
+
+normalized = box.normalize(page_size)
+restored = normalized.denormalize(page_size)
+transformed = box.transform(AffineMatrix.rotation(90.0))
+```
+
+Canonical geometry uses top-left origin, X to the right, Y downward, absolute
+units in points and positive clockwise rotation.
+
 Install the backend only when needed:
 
 ```bash

@@ -56,8 +56,8 @@ Contexto detalhado: [block-3-native-pdf-scene.md](../block-3-native-pdf-scene.md
 | Fase | Entrega | Estado |
 |---|---|---|
 | 3.1 | Criar contratos e providers nativos de PDF | Concluida |
-| 3.2 | Criar o PDF Inspector tecnico | Planejada |
-| 3.3 | Definir geometria e coordenadas canonicas | Planejada |
+| 3.2 | Criar o PDF Inspector tecnico | Concluida |
+| 3.3 | Definir geometria e coordenadas canonicas | Concluida |
 | 3.4 | Mapear recursos, objetos e content streams | Planejada |
 | 3.5 | Criar catalogo de fontes e tipografia | Planejada |
 | 3.6 | Extrair texto granular e hierarquia textual nativa | Planejada |

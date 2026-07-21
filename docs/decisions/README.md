@@ -11,8 +11,8 @@ As decisoes do Eixo sao registradas como ADRs.
 - [ADR-0005 - Evidencias obrigatorias](adr-0005-required-evidence.md)
 - [ADR-0006 - LocalRuntime e TemporalRuntime](adr-0006-local-and-temporal-runtimes.md)
 - [ADR-0007 - Modulos antes de microsservicos](adr-0007-modules-before-microservices.md)
+- [ADR-0008 - Geometria canonica](adr-0008-canonical-geometry.md)
 
 ## Status
 
 Todas as ADRs iniciais estao aceitas como base para as proximas fases.
-

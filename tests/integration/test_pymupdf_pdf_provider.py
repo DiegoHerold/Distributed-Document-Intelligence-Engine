@@ -12,6 +12,8 @@ from eixo import (
     DocumentSource,
     CorruptedPDFError,
     InvalidPDFPasswordError,
+    PDFInspectionOptions,
+    PDFInspectionState,
     PDFOpenOptions,
     PDFPasswordRequiredError,
     PDFProbeOptions,
@@ -19,6 +21,8 @@ from eixo import (
     PDFProviderSettings,
     PDFProviderUnavailableError,
     PDFResourceLimitExceededError,
+    PDFSecurityStatus,
+    PDFTechnicalProfile,
 )
 from eixo.providers.pdf.pymupdf import PYMUPDF_PROVIDER_ID, PyMuPDFPDFProvider
 
@@ -76,6 +80,9 @@ def test_pymupdf_provider_probe_open_geometry_and_close_with_fake_backend() -> N
             assert geometry.width == 612
             assert geometry.height == 792
             assert geometry.media_box == (0.0, 0.0, 612.0, 792.0)
+            assert geometry.canonical_geometry is not None
+            assert geometry.canonical_geometry.width == 612
+            assert geometry.canonical_geometry.height == 792
 
         assert document.closed is True
 
@@ -90,6 +97,27 @@ def test_pymupdf_provider_accepts_local_path_without_reading_all_bytes(tmp_path:
 
         async with await provider.open(DocumentSource.from_path(path)) as document:
             assert await document.get_page_count() == 1
+
+    asyncio.run(run())
+
+
+def test_pymupdf_provider_applies_canonical_page_geometry_with_rotation() -> None:
+    async def run() -> None:
+        provider = PyMuPDFPDFProvider(_backend=FakePyMuPDFBackend())
+        source = DocumentSource.from_bytes(
+            b"%PDF-1.7\nROTATE=90\nUSERUNIT=2\n",
+            filename="rotated.pdf",
+        )
+
+        async with await provider.open(source) as document:
+            page = await document.get_page(0)
+            geometry = await page.get_basic_geometry()
+
+        assert geometry.width == 1584.0
+        assert geometry.height == 1224.0
+        assert geometry.rotation == 90
+        assert geometry.canonical_geometry is not None
+        assert geometry.canonical_geometry.user_unit == 2.0
 
     asyncio.run(run())
 
@@ -155,6 +183,36 @@ def test_document_engine_resolves_registered_pdf_provider() -> None:
     assert engine.pdf_provider is provider
 
 
+def test_document_engine_runs_pdf_technical_inspection_with_fake_backend() -> None:
+    async def run() -> None:
+        provider = PyMuPDFPDFProvider(_backend=FakePyMuPDFBackend())
+        engine = DocumentEngine.local(
+            pdf_providers=(provider,),
+            pdf=PDFProviderSettings(default_provider=PYMUPDF_PROVIDER_ID),
+        )
+
+        try:
+            result = await engine.inspect_pdf(
+                DocumentSource.from_bytes(PDF_BYTES, filename="technical.pdf"),
+                options=PDFInspectionOptions(),
+            )
+        finally:
+            await engine.shutdown()
+
+        assert result.security.status == PDFSecurityStatus.NOT_ENCRYPTED
+        assert result.page_summary.total_pages == 1
+        assert result.page_inspections[0].canonical_geometry is not None
+        assert result.page_inspections[0].canonical_geometry.page_box.width == 612
+        assert result.feature_inventory.native_text.status == PDFInspectionState.PRESENT
+        assert result.feature_inventory.images.status == PDFInspectionState.PRESENT
+        assert result.feature_inventory.vectors.status == PDFInspectionState.PRESENT
+        assert result.resource_summary.images.approximate_count == 1
+        assert result.technical_profile is not None
+        assert result.technical_profile.profile == PDFTechnicalProfile.INTERACTIVE
+
+    asyncio.run(run())
+
+
 @dataclass(slots=True)
 class FakeRect:
     x0: float
@@ -169,6 +227,27 @@ class FakePage:
     mediabox: FakeRect = field(default_factory=lambda: FakeRect(0, 0, 612, 792))
     cropbox: FakeRect = field(default_factory=lambda: FakeRect(0, 0, 612, 792))
     rotation: int = 0
+    user_unit: float = 1.0
+
+    def get_text(self, mode: str) -> str:
+        assert mode == "text"
+        return "hello pdf"
+
+    def get_images(self, *, full: bool) -> list[tuple[str]]:
+        assert full is True
+        return [("img",)]
+
+    def get_drawings(self) -> list[dict[str, str]]:
+        return [{"type": "path"}]
+
+    def get_links(self) -> list[dict[str, str]]:
+        return [{"uri": "https://example.test"}]
+
+    def annots(self) -> list[str]:
+        return []
+
+    def widgets(self) -> list[str]:
+        return []
 
 
 class FakePyMuPDFBackend:
@@ -199,6 +278,8 @@ class FakeDocument:
         self.needs_pass = b"ENCRYPTED" in content
         self.closed = False
         self.page_count = 3 if b"PAGES=3" in content else 1
+        self.page_rotation = 90 if b"ROTATE=90" in content else 0
+        self.user_unit = 2.0 if b"USERUNIT=2" in content else 1.0
 
     def authenticate(self, password: str) -> int:
         return 1 if password == "secret" else 0
@@ -208,7 +289,7 @@ class FakeDocument:
             raise RuntimeError("closed")
         if index < 0 or index >= self.page_count:
             raise IndexError(index)
-        return FakePage()
+        return FakePage(rotation=self.page_rotation, user_unit=self.user_unit)
 
     def close(self) -> None:
         self.closed = True

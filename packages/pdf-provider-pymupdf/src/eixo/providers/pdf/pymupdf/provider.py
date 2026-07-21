@@ -29,9 +29,11 @@ from eixo.pdf import (
     PDFBasicInfo,
     PDFDocumentHandle,
     PDFEncryptionState,
+    PDFInspectionState,
     PDFOpenOptions,
     PDFPageGeometry,
     PDFPageHandle,
+    PDFPageTechnicalHints,
     PDFProbeOptions,
     PDFProbeResult,
     PDFProbeStatus,
@@ -41,6 +43,7 @@ from eixo.pdf import (
     PDFProviderRegistry,
     PDFSupportLevel,
     ProviderLimitation,
+    canonical_pdf_page_geometry,
 )
 
 logger = logging.getLogger(__name__)
@@ -94,6 +97,17 @@ class PyMuPDFPDFProvider:
             supports_incremental_page_access=PDFSupportLevel.SUPPORTED,
             supports_basic_info=PDFSupportLevel.SUPPORTED,
             supports_page_geometry=PDFSupportLevel.SUPPORTED,
+            supports_metadata_inspection=PDFSupportLevel.PARTIAL,
+            supports_security_inspection=PDFSupportLevel.PARTIAL,
+            supports_permission_inspection=PDFSupportLevel.UNSUPPORTED,
+            supports_resource_inspection=PDFSupportLevel.PARTIAL,
+            supports_text_presence_inspection=PDFSupportLevel.PARTIAL,
+            supports_image_presence_inspection=PDFSupportLevel.PARTIAL,
+            supports_vector_presence_inspection=PDFSupportLevel.PARTIAL,
+            supports_link_inspection=PDFSupportLevel.PARTIAL,
+            supports_annotation_inspection=PDFSupportLevel.PARTIAL,
+            supports_form_inspection=PDFSupportLevel.PARTIAL,
+            supports_layer_inspection=PDFSupportLevel.UNSUPPORTED,
             supports_text_extraction=PDFSupportLevel.UNSUPPORTED,
             supports_glyph_extraction=PDFSupportLevel.UNSUPPORTED,
             supports_word_extraction=PDFSupportLevel.UNSUPPORTED,
@@ -391,8 +405,31 @@ class PyMuPDFPDFPageHandle:
             media_box = _box(getattr(page, "mediabox", None))
             crop_box = _box(getattr(page, "cropbox", None))
             rotation = int(getattr(page, "rotation", 0) or 0)
-            width = rect[2] - rect[0] if rect is not None else 0.0
-            height = rect[3] - rect[1] if rect is not None else 0.0
+            user_unit = _user_unit(page, self.document_handle.document)
+            canonical_geometry = (
+                canonical_pdf_page_geometry(
+                    media_box=media_box,
+                    crop_box=crop_box,
+                    rotation_degrees=rotation,
+                    user_unit=user_unit,
+                )
+                if media_box is not None
+                else None
+            )
+            width = (
+                canonical_geometry.width
+                if canonical_geometry is not None
+                else rect[2] - rect[0]
+                if rect is not None
+                else 0.0
+            )
+            height = (
+                canonical_geometry.height
+                if canonical_geometry is not None
+                else rect[3] - rect[1]
+                if rect is not None
+                else 0.0
+            )
             return PDFPageGeometry(
                 page_index=self.index,
                 page_number=self.page_number,
@@ -401,6 +438,7 @@ class PyMuPDFPDFPageHandle:
                 rotation=rotation,
                 media_box=media_box,
                 crop_box=crop_box,
+                canonical_geometry=canonical_geometry,
                 provenance=_provenance(
                     self.document_handle.descriptor,
                     operation="get_basic_geometry",
@@ -409,6 +447,15 @@ class PyMuPDFPDFPageHandle:
                     page_index=self.index,
                 ),
             )
+
+    async def get_technical_hints(self) -> PDFPageTechnicalHints:
+        self.document_handle._ensure_open()
+        async with self.document_handle._lock:
+            page = await asyncio.to_thread(
+                self.document_handle.document.load_page,
+                self.index,
+            )
+            return await asyncio.to_thread(_technical_hints_from_page, page)
 
 
 def create_pymupdf_pdf_provider() -> PyMuPDFPDFProvider:
@@ -589,6 +636,83 @@ def _box(value: object | None) -> tuple[float, float, float, float] | None:
             return (float(x0), float(y0), float(x1), float(y1))
         except (TypeError, ValueError):
             return None
+
+
+def _user_unit(page: object, document: object) -> float:
+    for owner in (page, document):
+        value = getattr(owner, "user_unit", None)
+        if value is not None:
+            try:
+                parsed = float(value)
+            except (TypeError, ValueError):
+                return 1.0
+            return parsed if parsed > 0.0 else 1.0
+    return 1.0
+
+
+def _technical_hints_from_page(page: object) -> PDFPageTechnicalHints:
+    text_count = _text_count(page)
+    image_count = _collection_count(page, "get_images", full=True)
+    vector_count = _collection_count(page, "get_drawings")
+    link_count = _collection_count(page, "get_links")
+    annotation_count = _collection_count(page, "annots")
+    form_count = _collection_count(page, "widgets")
+    return PDFPageTechnicalHints(
+        has_text=_state_from_optional_count(text_count),
+        has_images=_state_from_optional_count(image_count),
+        has_vectors=_state_from_optional_count(vector_count),
+        has_links=_state_from_optional_count(link_count),
+        has_annotations=_state_from_optional_count(annotation_count),
+        has_forms=_state_from_optional_count(form_count),
+        approximate_text_count=text_count if text_count != _UNSUPPORTED_COUNT else None,
+        approximate_image_count=image_count if image_count != _UNSUPPORTED_COUNT else None,
+        approximate_vector_count=vector_count if vector_count != _UNSUPPORTED_COUNT else None,
+        approximate_link_count=link_count if link_count != _UNSUPPORTED_COUNT else None,
+        approximate_annotation_count=annotation_count
+        if annotation_count != _UNSUPPORTED_COUNT
+        else None,
+        approximate_form_count=form_count if form_count != _UNSUPPORTED_COUNT else None,
+    )
+
+
+_UNSUPPORTED_COUNT = -1
+
+
+def _text_count(page: object) -> int | None:
+    get_text = getattr(page, "get_text", None)
+    if get_text is None:
+        return _UNSUPPORTED_COUNT
+    try:
+        value = get_text("text")
+    except Exception:
+        return None
+    if value is None:
+        return 0
+    return len(str(value).strip())
+
+
+def _collection_count(page: object, method_name: str, **kwargs: object) -> int | None:
+    method = getattr(page, method_name, None)
+    if method is None:
+        return _UNSUPPORTED_COUNT
+    try:
+        value = method(**kwargs)
+    except Exception:
+        return None
+    if value is None:
+        return 0
+    try:
+        return len(value)
+    except TypeError:
+        return sum(1 for _ in value)
+
+
+def _state_from_optional_count(count: int | None) -> PDFInspectionState:
+    if count == _UNSUPPORTED_COUNT:
+        return PDFInspectionState.UNSUPPORTED
+    if count is None:
+        return PDFInspectionState.UNKNOWN
+    return PDFInspectionState.PRESENT if count > 0 else PDFInspectionState.ABSENT
 
 
 def _backend_version(backend: object | None) -> str | None:

@@ -129,6 +129,14 @@ reconstruivel. Isso nao implica editor visual, OCR, reconstrucao semantica,
 tabelas reconstruidas ou exportacao de PDF alterado; esses temas pertencem a
 blocos futuros.
 
+As fases iniciais do Bloco 3 ja estabeleceram contratos de provider PDF e um
+`PDFTechnicalInspector` especializado. O inspector descreve validade, versao,
+paginas, metadados, seguranca, permissoes, cobertura, recursos e sinais de
+fidelidade/editabilidade, sem executar decomposicao visual ou extracao granular.
+Tambem ja existe uma geometria canonica compartilhada em `eixo.geometry`, com
+origem no canto superior esquerdo, eixo Y para baixo, unidade em points,
+matrizes afins e coordenadas normalizadas.
+
 Detalhes oficiais do bloco estao em
 [block-3-native-pdf-scene.md](../roadmap/block-3-native-pdf-scene.md).
 

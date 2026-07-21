@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import Protocol, runtime_checkable
 
 from eixo.core import DocumentSource
+from eixo.pdf.inspection import PDFInspectionOptions, PDFTechnicalInspection
 from eixo.pdf.models import (
     PDFBasicInfo,
     PDFOpenOptions,
@@ -90,4 +91,26 @@ class PDFProvider(Protocol):
         ...
 
 
-__all__ = ["PDFDocumentHandle", "PDFPageHandle", "PDFProvider"]
+@runtime_checkable
+class PDFTechnicalInspector(Protocol):
+    async def inspect(
+        self,
+        source: DocumentSource,
+        options: PDFInspectionOptions | None = None,
+    ) -> PDFTechnicalInspection:
+        ...
+
+    async def inspect_document(
+        self,
+        document: PDFDocumentHandle,
+        options: PDFInspectionOptions | None = None,
+    ) -> PDFTechnicalInspection:
+        ...
+
+
+__all__ = [
+    "PDFDocumentHandle",
+    "PDFPageHandle",
+    "PDFProvider",
+    "PDFTechnicalInspector",
+]
