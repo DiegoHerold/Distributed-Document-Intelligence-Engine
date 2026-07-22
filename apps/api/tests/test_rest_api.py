@@ -3,6 +3,7 @@ from __future__ import annotations
 import importlib
 import time
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any
 
 import pytest
@@ -33,6 +34,11 @@ from eixo.core import (
 )
 from eixo.plugins import CapabilityDescriptor, ExecutionContext, ProviderDescriptor
 from eixo_api import ApiConfig, create_app
+from eixo.diagnostics.pdf_validation_lab import (
+    PDFValidationBatchResult,
+    PDFValidationDocumentResult,
+    PDFValidationDocumentState,
+)
 
 PDF_BYTES = b"%PDF-1.7\n"
 
@@ -274,6 +280,107 @@ def test_api_and_library_parity_with_same_capability() -> None:
     assert api_result["status"] == library_result.status.value
     assert api_result["data"] == library_result.data
     assert api_result["errors"] == list(library_result.errors)
+
+
+def test_temporary_lab_upload_processes_multiple_pdfs_and_cleans(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    async def fake_validate_pdf_batch(engine, input_path, **kwargs):
+        output = Path(kwargs["output_directory"])
+        run = output / "documents" / Path(input_path).stem / "runs" / "run_fake"
+        pages = run / "pages"
+        pages.mkdir(parents=True)
+        (run / "report.html").write_text("<html>temporary report</html>", encoding="utf-8")
+        (pages / "page-001-elements.json").write_text("[]", encoding="utf-8")
+        document = PDFValidationDocumentResult(
+            document_path=str(input_path),
+            document_id="doc_fake",
+            state=PDFValidationDocumentState.COMPLETED,
+            output_directory=run,
+            diagnostic_run_id="run_fake",
+            started_at="2026-07-22T00:00:00+00:00",
+            finished_at="2026-07-22T00:00:01+00:00",
+            page_count=1,
+            processed_pages=1,
+            report_path=run / "report.json",
+            html_report_path=run / "report.html",
+        )
+        return PDFValidationBatchResult(
+            input_path=Path(input_path),
+            output_directory=output,
+            profile=kwargs.get("profile", "visual"),
+            page_selection=None,
+            documents=(document,),
+            elapsed_seconds=0.01,
+            consolidated_report_path=output / "summary.json",
+        )
+
+    class DummyEngine:
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, exc_type, exc, tb):
+            return None
+
+    monkeypatch.setattr(
+        "eixo.diagnostics.temporary_lab.validate_pdf_batch",
+        fake_validate_pdf_batch,
+    )
+    config = ApiConfig(
+        temporary_diagnostics_dir=tmp_path / "temporary-diagnostics",
+        local_data_dir=tmp_path / "api",
+    )
+    app = create_app(config=config, engine=engine_with_fake_capabilities())
+    app.state.eixo.temporary_diagnostic_engine_factory = lambda data_dir: DummyEngine()
+
+    with TestClient(app) as client:
+        session = client.post("/lab/sessions").json()
+        response = client.post(
+            f"/lab/sessions/{session['session_id']}/documents",
+            files=[
+                ("files", ("one.pdf", PDF_BYTES, "application/pdf")),
+                ("files", ("two.pdf", PDF_BYTES, "application/pdf")),
+            ],
+            data={"profile": "visual"},
+        )
+        payload = response.json()
+        first = payload["documents"][0]
+        report = client.get(first["report_url"])
+        removed = client.delete(
+            f"/lab/sessions/{session['session_id']}/documents/{first['document_id']}"
+        )
+        closed = client.delete(f"/lab/sessions/{session['session_id']}")
+
+    assert response.status_code == 200
+    assert [item["status"] for item in payload["documents"]] == [
+        "completed",
+        "completed",
+    ]
+    assert report.status_code == 200
+    assert "temporary report" in report.text
+    assert "Sessao temporaria" in report.text
+    assert len(removed.json()["documents"]) == 1
+    assert closed.json()["status"] == "closed"
+    assert not any((tmp_path / "temporary-diagnostics").glob("diagtmp_*"))
+
+
+def test_temporary_lab_rejects_non_pdf_without_persisting(tmp_path: Path) -> None:
+    config = ApiConfig(
+        temporary_diagnostics_dir=tmp_path / "temporary-diagnostics",
+        local_data_dir=tmp_path / "api",
+    )
+    with TestClient(
+        create_app(config=config, engine=engine_with_fake_capabilities())
+    ) as client:
+        session = client.post("/lab/sessions").json()
+        response = client.post(
+            f"/lab/sessions/{session['session_id']}/documents",
+            files={"files": ("fake.pdf", b"not a pdf", "application/pdf")},
+        )
+
+    assert response.status_code == 422
+    assert not list((tmp_path / "temporary-diagnostics").rglob("fake.pdf"))
 
 
 def wait_for_status(client: TestClient, job_id: str, status: str) -> dict[str, Any]:

@@ -8,7 +8,12 @@ from eixo_api.configuration import ApiConfig
 from eixo_api.error_handlers import register_error_handlers
 from eixo_api.lifecycle import ApiState, api_lifespan
 from eixo_api.middleware import CorrelationIdMiddleware
-from eixo_api.routers import documents_router, extractions_router, health_router
+from eixo_api.routers import (
+    diagnostic_lab_router,
+    documents_router,
+    extractions_router,
+    health_router,
+)
 
 
 def create_app(
@@ -33,12 +38,13 @@ def create_app(
             CORSMiddleware,
             allow_origins=list(resolved_config.cors_allowed_origins),
             allow_credentials=False,
-            allow_methods=["GET", "POST"],
+            allow_methods=["GET", "POST", "DELETE"],
             allow_headers=["X-Correlation-ID", "Content-Type"],
         )
     app.add_middleware(CorrelationIdMiddleware)
     register_error_handlers(app)
     app.include_router(health_router)
+    app.include_router(diagnostic_lab_router)
     app.include_router(documents_router)
     app.include_router(extractions_router)
     return app

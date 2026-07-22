@@ -33,7 +33,7 @@ def test_pdf_validation_lab_processes_batch_independently(tmp_path: Path) -> Non
         )
 
         states = {Path(item.document_path).name: item.state for item in result.documents}
-        assert states["good.pdf"] is PDFValidationDocumentState.COMPLETED_WITH_WARNINGS
+        assert states["good.pdf"] is PDFValidationDocumentState.COMPLETED
         assert states["bad.pdf"] is PDFValidationDocumentState.FAILED
         assert (output / "summary.json").exists()
         assert (output / "batch-report.json").exists()
@@ -51,6 +51,9 @@ def test_pdf_validation_lab_processes_batch_independently(tmp_path: Path) -> Non
         assert (good_run / "assessment.json").exists()
         assert (good_run / "manual-evaluation.json").exists()
         assert (good_run / "pages" / "page-001-original.png").exists()
+        assert (good_run / "pages" / "page-001-original-standard.png").exists()
+        assert (good_run / "pages" / "page-001-original-high.png").exists()
+        assert (good_run / "pages" / "page-001-original-ultra.png").exists()
         assert (good_run / "pages" / "page-001-overlay.png").exists()
         assert (good_run / "pages" / "page-001-elements.json").exists()
         html = (good_run / "report.html").read_text(encoding="utf-8")
@@ -62,11 +65,27 @@ def test_pdf_validation_lab_processes_batch_independently(tmp_path: Path) -> Non
         assert "Recursos" in html
         assert "Salvar avaliacao local" in html
         assert "localStorage" in html
+        assert "DiagnosticHitTestEngine" in html
+        assert "DiagnosticViewportTransform" in html
+        assert "PageViewportTransform" in html
+        assert "PreviewRenderManager" in html
+        assert "pdf-page-viewport" in html
+        assert "preview-quality" in html
+        assert "expand-line" in html
+        assert "manual_ctrl_selection" in html
+        assert "overlay-stage" not in html
+        assert "lado a lado" not in html
+        elements = json.loads(
+            (good_run / "pages" / "page-001-elements.json").read_text(encoding="utf-8")
+        )
+        text_element = elements["elements"][0]
+        assert text_element["display_text"] == "Reservado"
+        assert text_element["display_label"] == "\"Reservado\" | span"
         assert (bad_run / "report.json").exists()
         batch = json.loads((output / "batch-report.json").read_text(encoding="utf-8"))
         assert batch["documents_failed"] == 1
         assert batch["documents_completed"] == 1
-        assert batch["finding_count"] == 1
+        assert batch["finding_count"] == 0
 
     import asyncio
 
@@ -84,6 +103,7 @@ class FakeValidationEngine:
     async def parse(self, request: ParseRequest) -> ParseResult:
         if request.source.filename == "bad.pdf":
             raise RuntimeError("parse failed")
+        text_reference = await self._store_text()
         reference = await self._store_scene()
         return ParseResult(
             document_id=DocumentId("doc_good"),
@@ -92,6 +112,7 @@ class FakeValidationEngine:
             profile=request.profile,
             scene_artifact_reference=reference,
             page_count=1,
+            artifacts=(text_reference, reference),
             statistics={
                 "page_count": 1,
                 "element_count": 1,
@@ -114,6 +135,24 @@ class FakeValidationEngine:
                 size_bytes=len(payload),
                 media_type="application/vnd.eixo+json",
                 original_filename="native-scene.json",
+            )
+        )
+
+    async def _store_text(self) -> ArtifactReference:
+        from io import BytesIO
+
+        from eixo.core import ArtifactType, ArtifactWriteRequest, ContentHash
+
+        payload = json.dumps(_text_artifact()).encode("utf-8")
+        digest = ContentHash("sha256", hashlib.sha256(payload).hexdigest())
+        return await self.artifact_store.put(
+            ArtifactWriteRequest(
+                stream=BytesIO(payload),
+                artifact_type=ArtifactType.DERIVED,
+                content_hash=digest,
+                size_bytes=len(payload),
+                media_type="application/vnd.eixo+json",
+                original_filename="native-text.json",
             )
         )
 
@@ -160,8 +199,39 @@ def _native_scene() -> dict[str, object]:
                         },
                         "scene_order": 0,
                         "visibility": "visible",
+                        "source_references": [
+                            {
+                                "source_artifact_id": "PDFNativeTextArtifact",
+                                "source_element_id": (
+                                    "pdfspan:page-0:block-0:line-0:span-0"
+                                ),
+                                "source_element_type": "text_span",
+                            }
+                        ],
                     }
                 ],
             }
         ],
+    }
+
+
+def _text_artifact() -> dict[str, object]:
+    return {
+        "artifact_version": "1.0.0",
+        "pages": [
+            {
+                "page_reference": {"page_id": "pdfpage:0", "page_index": 0},
+                "spans": [
+                    {
+                        "span_id": "pdfspan:page-0:block-0:line-0:span-0",
+                        "page_id": "pdfpage:0",
+                        "glyph_ids": ["pdfglyph:page-0:span-0:glyph-0"],
+                        "raw_text": "Reservado",
+                        "normalized_text": "Reservado",
+                    }
+                ],
+            }
+        ],
+        "text_layer": {"page_text_layers": []},
+        "statistics": {"span_count": 1},
     }

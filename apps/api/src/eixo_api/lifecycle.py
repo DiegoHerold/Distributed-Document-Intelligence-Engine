@@ -8,6 +8,7 @@ from fastapi import FastAPI
 
 from eixo.engine import DocumentEngine
 from eixo.engine.lifecycle import EngineState
+from eixo.diagnostics import TemporaryDiagnosticConfig, TemporaryDiagnosticStore
 from eixo_api.configuration import ApiConfig
 
 
@@ -18,6 +19,8 @@ class ApiState:
     ready: bool = False
     shutting_down: bool = False
     startup_error: str | None = None
+    temporary_diagnostic_store: TemporaryDiagnosticStore | None = None
+    temporary_diagnostic_engine_factory: object | None = None
 
     def require_engine(self) -> DocumentEngine:
         if self.engine is None:
@@ -26,6 +29,26 @@ class ApiState:
                 data_directory=self.config.local_data_dir,
             )
         return self.engine
+
+    def require_temporary_diagnostic_store(self) -> TemporaryDiagnosticStore:
+        if self.temporary_diagnostic_store is None:
+            self.temporary_diagnostic_store = TemporaryDiagnosticStore(
+                TemporaryDiagnosticConfig(
+                    root_directory=self.config.temporary_diagnostics_dir,
+                    heartbeat_interval=(
+                        self.config.temporary_diagnostic_heartbeat_interval
+                    ),
+                    inactive_session_grace_period=(
+                        self.config.temporary_diagnostic_inactive_grace_period
+                    ),
+                    maximum_session_lifetime=(
+                        self.config.temporary_diagnostic_maximum_lifetime
+                    ),
+                    cleanup_interval=self.config.temporary_diagnostic_cleanup_interval,
+                    max_upload_size=self.config.max_upload_size,
+                )
+            )
+        return self.temporary_diagnostic_store
 
     def readiness_checks(self) -> dict[str, str]:
         if self.shutting_down:
@@ -70,6 +93,10 @@ async def api_lifespan(app: FastAPI) -> AsyncIterator[None]:
         engine = state.engine
         if engine is not None:
             await engine.shutdown()
+        store = state.temporary_diagnostic_store
+        if store is not None:
+            for session_id in list(store.sessions):
+                store.close_session(session_id)
         state.ready = False
 
 

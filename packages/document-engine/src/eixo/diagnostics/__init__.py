@@ -8,6 +8,15 @@ from eixo.diagnostics.pdf_validation_lab import (
     PDFValidationDocumentState,
     validate_pdf_batch,
 )
+from eixo.diagnostics.temporary_lab import (
+    DiagnosticTemporarySession,
+    TemporaryDiagnosticConfig,
+    TemporaryDiagnosticDocument,
+    TemporaryDiagnosticDocumentStatus,
+    TemporaryDiagnosticSessionCleaner,
+    TemporaryDiagnosticSessionStatus,
+    TemporaryDiagnosticStore,
+)
 
 __all__ = [
     "PDFManualDimensionEvaluation",
@@ -15,5 +24,12 @@ __all__ = [
     "PDFValidationBatchResult",
     "PDFValidationDocumentResult",
     "PDFValidationDocumentState",
+    "DiagnosticTemporarySession",
+    "TemporaryDiagnosticConfig",
+    "TemporaryDiagnosticDocument",
+    "TemporaryDiagnosticDocumentStatus",
+    "TemporaryDiagnosticSessionCleaner",
+    "TemporaryDiagnosticSessionStatus",
+    "TemporaryDiagnosticStore",
     "validate_pdf_batch",
 ]

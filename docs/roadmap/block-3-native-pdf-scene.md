@@ -476,10 +476,26 @@ documento, pacote local de diagnostico por PDF, resumo consolidado
 `summary.json`/`index.html`, historico `history.json`, execucoes imutaveis por
 `diagnostic_run_id`, renderizacao original, overlays, `page-XXX-elements.json`,
 checks estruturais, template de avaliacao manual e laboratorio interativo
-autocontido em `report.html` com clique em elementos, filtros, paineis de texto,
-imagem, vetor e recursos. O laboratorio consome artefatos de diagnostico e nao
-faz o `DocumentEngine` depender de diagnostics. Ver
+autocontido em `report.html` com hit testing geometrico, granularidade textual,
+busca por valores extraidos, listas virtualizadas, candidatos sobrepostos,
+clique em texto/imagem/vetor, paineis de texto, imagem, vetor e recursos. A
+interface usa um unico preview da pagina, com imagem original em alta resolucao
+como base, renderizacao progressiva `standard`/`high`/`ultra`, modos limpo,
+selecao, diagnostico leve e diagnostico completo, labels configuraveis, zoom sem
+desalinhamento, selecao composta temporaria por Ctrl+clique e acao de expansao
+para linha textual quando as relacoes nativas permitem; nao ha segunda pagina de
+overlay lado a lado. O laboratorio consome artefatos de diagnostico e nao faz o
+`DocumentEngine` depender de diagnostics. Ver
 [pdf-real-validation-lab.md](../guides/pdf-real-validation-lab.md).
+
+Complemento implementado: entrada temporaria em `/lab` na API local, com drag
+and drop de um ou varios PDFs, `DiagnosticTemporarySession`,
+`TemporaryDiagnosticStore`, processamento por `DocumentEngine.local()` em
+diretorio efemero da sessao, heartbeat, limpeza por inatividade, remocao de
+documento, limpeza total da sessao, historico desativado no modo temporario e
+exportacao manual sem incluir o PDF original por padrao. O relatorio temporario
+permite voltar para a tela de uploads da mesma sessao sem transformar o PDF real
+em relatorio pronto persistente.
 
 ## Fora Do Escopo
 
