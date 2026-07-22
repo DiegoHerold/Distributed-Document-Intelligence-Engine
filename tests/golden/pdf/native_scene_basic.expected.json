@@ -1,0 +1,171 @@
+{
+  "artifact_type": "native_pdf_scene",
+  "editability": {
+    "overall_status": "raster_only",
+    "partially_editable_count": 4,
+    "raster_only_count": 1,
+    "reconstruction_required_count": 1
+  },
+  "elements": [
+    {
+      "bbox": {
+        "x_max": 42,
+        "x_min": 10,
+        "y_max": 22,
+        "y_min": 10
+      },
+      "clip_path_reference": null,
+      "element_id": "sceneelement:text_span:pdfpage-0:pdfspan-page-0-block-0-line-0-span-0",
+      "element_type": "text_span",
+      "fidelity": "native_normalized",
+      "resources": [
+        "pdffont:subset-f1"
+      ],
+      "scene_order": 2,
+      "source_artifacts": [
+        "PDFNativeTextArtifact"
+      ]
+    },
+    {
+      "bbox": {
+        "x_max": 18,
+        "x_min": 10,
+        "y_max": 22,
+        "y_min": 10
+      },
+      "clip_path_reference": null,
+      "element_id": "sceneelement:text_glyph:pdfpage-0:pdfglyph-page-0-span-0-glyph-0",
+      "element_type": "text_glyph",
+      "fidelity": "native_exact",
+      "resources": [
+        "pdffont:subset-f1"
+      ],
+      "scene_order": 0,
+      "source_artifacts": [
+        "PDFNativeTextArtifact"
+      ]
+    },
+    {
+      "bbox": {
+        "x_max": 28,
+        "x_min": 20,
+        "y_max": 22,
+        "y_min": 10
+      },
+      "clip_path_reference": null,
+      "element_id": "sceneelement:text_glyph:pdfpage-0:pdfglyph-page-0-span-0-glyph-1",
+      "element_type": "text_glyph",
+      "fidelity": "native_exact",
+      "resources": [
+        "pdffont:subset-f1"
+      ],
+      "scene_order": 1,
+      "source_artifacts": [
+        "PDFNativeTextArtifact"
+      ]
+    },
+    {
+      "bbox": {
+        "x_max": 130,
+        "x_min": 70,
+        "y_max": 70,
+        "y_min": 20
+      },
+      "clip_path_reference": "pdfclip:page-0:clip-0",
+      "element_id": "sceneelement:image:pdfpage-0:pdfimageocc-page-0-logo-0",
+      "element_type": "image",
+      "fidelity": "native_normalized",
+      "resources": [
+        "pdfimage:logo"
+      ],
+      "scene_order": 3,
+      "source_artifacts": [
+        "PDFNativeImageArtifact"
+      ]
+    },
+    {
+      "bbox": {
+        "x_max": 180,
+        "x_min": 8,
+        "y_max": 120,
+        "y_min": 80
+      },
+      "clip_path_reference": "pdfclip:page-0:clip-0",
+      "element_id": "sceneelement:vector:pdfpage-0:pdfvector-page-0-table-border-0",
+      "element_type": "vector",
+      "fidelity": "provider_reconstructed",
+      "resources": [],
+      "scene_order": 4,
+      "source_artifacts": [
+        "PDFNativeVectorArtifact"
+      ]
+    },
+    {
+      "bbox": {
+        "x_max": 60,
+        "x_min": 10,
+        "y_max": 145,
+        "y_min": 128
+      },
+      "clip_path_reference": null,
+      "element_id": "sceneelement:link:pdfpage-0:pdflink-page-0-external",
+      "element_type": "link",
+      "fidelity": "native_normalized",
+      "resources": [],
+      "scene_order": null,
+      "source_artifacts": [
+        "PDFInteractiveArtifact"
+      ]
+    },
+    {
+      "bbox": {
+        "x_max": 86,
+        "x_min": 70,
+        "y_max": 145,
+        "y_min": 128
+      },
+      "clip_path_reference": null,
+      "element_id": "sceneelement:form_widget:pdfpage-0:pdfwidget-page-0-accepted",
+      "element_type": "form_widget",
+      "fidelity": "native_normalized",
+      "resources": [],
+      "scene_order": null,
+      "source_artifacts": [
+        "PDFInteractiveArtifact"
+      ]
+    }
+  ],
+  "fidelity": {
+    "exact_element_count": 2,
+    "normalized_element_count": 4,
+    "overall_level": "unknown",
+    "reconstructed_element_count": 1
+  },
+  "ordered_element_ids": [
+    "sceneelement:text_span:pdfpage-0:pdfspan-page-0-block-0-line-0-span-0",
+    "sceneelement:text_glyph:pdfpage-0:pdfglyph-page-0-span-0-glyph-0",
+    "sceneelement:text_glyph:pdfpage-0:pdfglyph-page-0-span-0-glyph-1",
+    "sceneelement:image:pdfpage-0:pdfimageocc-page-0-logo-0",
+    "sceneelement:vector:pdfpage-0:pdfvector-page-0-table-border-0"
+  ],
+  "page": {
+    "element_count": 7,
+    "image_count": 1,
+    "interactive_count": 2,
+    "page_id": "pdfpage:0",
+    "text_count": 3,
+    "vector_count": 1
+  },
+  "statistics": {
+    "element_count": 7,
+    "image_occurrence_count": 1,
+    "link_count": 1,
+    "native_exact_count": 2,
+    "native_normalized_count": 4,
+    "page_count": 1,
+    "provider_reconstructed_count": 1,
+    "text_element_count": 3,
+    "vector_element_count": 1,
+    "widget_count": 1
+  }
+}

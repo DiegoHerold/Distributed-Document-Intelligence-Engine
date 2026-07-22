@@ -10,6 +10,12 @@ from eixo.pdf.contracts import (
     PDFTechnicalInspector,
     PDFTypographyResolver,
 )
+from eixo.pdf.diagnostics import (
+    PDFDiagnosticOverlay,
+    PDFDiagnosticPreviewArtifact,
+    PDFDiagnosticPreviewConfig,
+    PDFDiagnosticPreviewGenerator,
+)
 from eixo.pdf.image_mapper import DefaultPDFNativeImageExtractor
 from eixo.pdf.images import (
     PDFColorKeyMask,
@@ -592,4 +598,11 @@ __all__ += [
     "pdf_scene_element_id",
     "pdf_scene_id",
     "pdf_scene_relation_id",
+]
+
+__all__ += [
+    "PDFDiagnosticOverlay",
+    "PDFDiagnosticPreviewArtifact",
+    "PDFDiagnosticPreviewConfig",
+    "PDFDiagnosticPreviewGenerator",
 ]

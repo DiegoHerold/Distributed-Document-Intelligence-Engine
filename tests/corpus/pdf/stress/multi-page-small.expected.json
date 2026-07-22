@@ -1,0 +1,28 @@
+{
+  "document_id": "pdf-corpus-stress-multi-page-small",
+  "expected": {
+    "features": [
+      "multiple_pages",
+      "page_selection",
+      "resource_reuse"
+    ],
+    "golden_type": "exploratory",
+    "metrics": {
+      "elements_without_geometry": 0,
+      "elements_without_source_reference": 0,
+      "image_occurrences": 0,
+      "image_resources": 0,
+      "text_elements": 0,
+      "unresolved_fonts": 0,
+      "unsupported_operations": 1,
+      "vector_paths": 0
+    },
+    "page_count": 3,
+    "profile": "visual",
+    "security": {
+      "executes_actions": false,
+      "stores_password": false
+    }
+  },
+  "schema_version": "pdf-corpus-expected/v1"
+}

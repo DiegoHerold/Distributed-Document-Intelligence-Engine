@@ -13,6 +13,7 @@ Guias operacionais e de contribuicao devem ficar nesta pasta.
 - [pdf-inspection.md](pdf-inspection.md): inspecao publica de PDF.
 - [pdf-parsing.md](pdf-parsing.md): parsing publico de PDF.
 - [pdf-profiles.md](pdf-profiles.md): perfis publicos do parser PDF.
+- [pdf-diagnostic-preview.md](pdf-diagnostic-preview.md): preview tecnico de diagnostico PDF.
 
 ## Guias esperados
 

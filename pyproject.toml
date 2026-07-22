@@ -36,6 +36,12 @@ packages = ["tools"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests", "apps/api/tests", "apps/cli/tests"]
+markers = [
+    "golden: deterministic PDF corpus and structural golden tests",
+    "visual: reduced deterministic visual regression tests",
+    "exploratory: non-blocking exploratory corpus checks",
+    "stress: manual or scheduled stress corpus checks",
+]
 pythonpath = [
     "packages/document-core/src",
     "packages/document-model/src",

@@ -401,6 +401,8 @@ Entrega implementada: `NativePDFSceneArtifact`,
 
 ### 3.12 - Integracao publica, armazenamento e jobs
 
+Status: concluida.
+
 Integrar a capability nativa de PDF ao Eixo preservando as interfaces genericas:
 
 - `engine.inspect("documento.pdf")`;
@@ -422,6 +424,8 @@ recursos grandes devem ser armazenados separadamente e referenciados. Parsing
 completo deve funcionar por jobs locais persistentes.
 
 ### 3.13 - Corpus, golden tests e regressao visual
+
+Status: concluida.
 
 Criar corpus minimo com PDFs de texto digital simples, multiplas fontes, fonte
 subset, texto caractere por caractere, texto rotacionado, pagina rotacionada,
@@ -451,6 +455,14 @@ Metricas por documento:
 - `unsupported_operations`;
 - `elements_without_geometry`;
 - `elements_without_source_reference`.
+
+Entrega implementada: corpus sintetico em `tests/corpus/pdf`, manifestos com
+hashes, `GoldenArtifactNormalizer`, `GoldenArtifactComparator`, snapshots
+estruturais revisaveis, preview diagnostico PNG/JSON e testes `golden` /
+`visual`. Ver [pdf-corpus.md](../testing/pdf-corpus.md),
+[pdf-golden-tests.md](../testing/pdf-golden-tests.md),
+[pdf-visual-regression.md](../testing/pdf-visual-regression.md) e
+[pdf-diagnostic-preview.md](../guides/pdf-diagnostic-preview.md).
 
 ## Fora Do Escopo
 

@@ -1,0 +1,26 @@
+{
+  "height": 160,
+  "limitations": [
+    "diagnostic_preview.no_official_pdf_renderer"
+  ],
+  "overlay_counts": {
+    "form_widget": 1,
+    "image": 1,
+    "link": 1,
+    "text_glyph": 2,
+    "text_span": 1,
+    "vector": 1
+  },
+  "overlay_ids": [
+    "sceneelement:text_span:pdfpage-0:pdfspan-page-0-block-0-line-0-span-0",
+    "sceneelement:text_glyph:pdfpage-0:pdfglyph-page-0-span-0-glyph-0",
+    "sceneelement:text_glyph:pdfpage-0:pdfglyph-page-0-span-0-glyph-1",
+    "sceneelement:image:pdfpage-0:pdfimageocc-page-0-logo-0",
+    "sceneelement:vector:pdfpage-0:pdfvector-page-0-table-border-0",
+    "sceneelement:link:pdfpage-0:pdflink-page-0-external",
+    "sceneelement:form_widget:pdfpage-0:pdfwidget-page-0-accepted"
+  ],
+  "page_id": "pdfpage:0",
+  "png_sha256": "c1beb22199e2e1c43b1b0e15f2ed219b3f395d909961e1d4301804ce4388f96c",
+  "width": 200
+}

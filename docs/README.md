@@ -55,9 +55,14 @@ Este diretorio organiza o contexto, a arquitetura, as decisoes, o roadmap e os d
 49. [Inspecao publica de PDF](guides/pdf-inspection.md)
 50. [Parsing publico de PDF](guides/pdf-parsing.md)
 51. [Perfis publicos de PDF](guides/pdf-profiles.md)
-52. [Manuseio seguro de arquivos](guides/safe-file-handling.md)
-53. [Testes de paridade](testing/parity-tests.md)
-54. [Arquivo historico](archive/README.md), quando for necessario auditar a origem das decisoes
+52. [Preview diagnostico PDF](guides/pdf-diagnostic-preview.md)
+53. [Manuseio seguro de arquivos](guides/safe-file-handling.md)
+54. [Testes](testing/README.md)
+55. [Testes de paridade](testing/parity-tests.md)
+56. [Corpus PDF](testing/pdf-corpus.md)
+57. [Golden tests PDF](testing/pdf-golden-tests.md)
+58. [Regressao visual PDF](testing/pdf-visual-regression.md)
+59. [Arquivo historico](archive/README.md), quando for necessario auditar a origem das decisoes
 
 ## Estrutura
 
