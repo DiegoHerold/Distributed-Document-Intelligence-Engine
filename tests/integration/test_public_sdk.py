@@ -24,6 +24,7 @@ from eixo import (
     LocalPathSource,
     LocalRuntimeConfig,
     ParseRequest,
+    PDFProviderUnavailableError,
     ProcessingRequest,
     ProcessingResult,
     ValidationError,
@@ -93,7 +94,7 @@ def test_public_lifecycle_and_capability_absent() -> None:
             declared_media_type="application/pdf",
         )
         async with DocumentEngine.local() as engine:
-            with pytest.raises(CapabilityNotFoundError):
+            with pytest.raises(PDFProviderUnavailableError):
                 await engine.inspect(InspectionRequest(source=source))
 
     asyncio.run(run())

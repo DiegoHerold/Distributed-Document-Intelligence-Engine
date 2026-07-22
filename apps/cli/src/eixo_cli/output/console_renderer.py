@@ -37,6 +37,10 @@ def render_parse(value: ParseResult, *, quiet: bool) -> str:
     lines = [
         f"Status: {value.status.value}",
         f"Documento: {value.document_id}",
+        f"Formato: {value.format or '-'}",
+        f"Perfil: {value.profile or '-'}",
+        f"Paginas: {value.page_count if value.page_count is not None else '-'}",
+        f"Artefato: {value.artifact_reference.artifact_id if value.artifact_reference else '-'}",
         f"Artefatos: {len(value.artifacts)}",
         f"Erros: {len(value.errors)}",
     ]

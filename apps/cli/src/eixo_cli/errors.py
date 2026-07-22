@@ -27,6 +27,7 @@ from eixo import (
     JobPersistenceError,
     JobResultUnavailableError,
     PageLimitExceededError,
+    PDFProviderUnavailableError,
     PathTraversalError,
     ReadTimeoutError,
     SourceNotFileError,
@@ -70,6 +71,8 @@ def exit_code_for_error(error: BaseException) -> ExitCode:
     if isinstance(error, UnsupportedFormatError):
         return ExitCode.UNSUPPORTED_FORMAT
     if isinstance(error, CapabilityNotFoundError):
+        return ExitCode.CAPABILITY_UNAVAILABLE
+    if isinstance(error, PDFProviderUnavailableError):
         return ExitCode.CAPABILITY_UNAVAILABLE
     if isinstance(error, JobNotFoundError):
         return ExitCode.JOB_NOT_FOUND
@@ -129,6 +132,8 @@ def user_message_for_error(error: BaseException) -> str:
         return "Erro: nome ou caminho inseguro."
     if isinstance(error, CapabilityNotFoundError):
         return "Erro: capability necessaria nao encontrada."
+    if isinstance(error, PDFProviderUnavailableError):
+        return "Erro: provider de PDF indisponivel."
     if isinstance(error, JobNotFoundError):
         return "Erro: job nao encontrado."
     if isinstance(error, JobResultUnavailableError):

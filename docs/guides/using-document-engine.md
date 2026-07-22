@@ -69,9 +69,12 @@ Depois que o engine inicia, as dependencias principais ficam protegidas contra m
 
 ## Erros
 
-O engine preserva erros de dominio. Por exemplo, sem uma capability registrada, `inspect()`, `parse()` ou `process()` levantam `CapabilityNotFoundError`.
+O engine preserva erros de dominio. Por exemplo, formatos desconhecidos levantam
+`UnsupportedFormatError`; se a capability PDF estiver registrada mas o backend
+opcional nao estiver disponivel, a execucao levanta `PDFProviderUnavailableError`.
 
 ## Limites atuais
 
-Ainda nao existem capabilities reais de PDF, Excel, OCR, renderizacao, templates, schemas de negocio, router ou planner.
-
+Existe integracao publica inicial do parser nativo de PDF para `inspect()`,
+`parse()` e jobs locais. Excel, OCR, renderizacao, templates, schemas de negocio,
+router e planner ainda ficam fora do escopo atual.

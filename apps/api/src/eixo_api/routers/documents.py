@@ -65,6 +65,10 @@ async def parse_document(
     result = await engine.parse(
         ParseRequest(
             source=source,
+            profile=upload.fields.get("profile"),
+            page_selection=parse_page_selection(
+                upload.fields.get("page_selection") or upload.fields.get("pages")
+            ),
             options=parse_options(upload.fields.get("options")),
             requested_capability=upload.fields.get("requested_capability"),
             correlation_id=resolve_correlation_id(
@@ -90,6 +94,38 @@ def parse_options(value: str | None) -> dict[str, Any]:
     return parsed
 
 
+def parse_page_selection(value: str | None) -> tuple[int, ...] | None:
+    if value is None or not value.strip():
+        return None
+    stripped = value.strip()
+    if stripped.startswith("[") or stripped.startswith("{"):
+        parsed = json.loads(stripped)
+        if isinstance(parsed, dict):
+            parsed = parsed.get("pages")
+        if not isinstance(parsed, list):
+            from eixo.core import ValidationError
+
+            raise ValidationError("page_selection JSON must be an array or object with pages")
+        return tuple(int(item) for item in parsed)
+    pages: list[int] = []
+    for part in stripped.split(","):
+        token = part.strip()
+        if not token:
+            continue
+        if "-" in token:
+            start_text, end_text = token.split("-", 1)
+            start = int(start_text)
+            end = int(end_text)
+            if end < start:
+                from eixo.core import ValidationError
+
+                raise ValidationError("page range end must be greater than or equal to start")
+            pages.extend(range(start, end + 1))
+            continue
+        pages.append(int(token))
+    return tuple(dict.fromkeys(pages)) or None
+
+
 def resolve_correlation_id(request: Request, value: str | None) -> CorrelationId:
     if value is not None and value.strip():
         return parse_correlation_id(value)
@@ -111,4 +147,10 @@ def parse_correlation_id(value: str) -> CorrelationId:
         raise ValidationError("correlation_id must start with 'corr_'") from exc
 
 
-__all__ = ["parse_correlation_id", "parse_options", "resolve_correlation_id", "router"]
+__all__ = [
+    "parse_correlation_id",
+    "parse_options",
+    "parse_page_selection",
+    "resolve_correlation_id",
+    "router",
+]

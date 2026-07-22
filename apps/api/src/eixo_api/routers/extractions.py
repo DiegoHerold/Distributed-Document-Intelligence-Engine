@@ -6,7 +6,11 @@ from eixo.core import ProcessingRequest
 from eixo.engine import DocumentEngine
 from eixo_api.dependencies import get_engine
 from eixo_api.responses import json_response
-from eixo_api.routers.documents import parse_options, resolve_correlation_id
+from eixo_api.routers.documents import (
+    parse_options,
+    parse_page_selection,
+    resolve_correlation_id,
+)
 from eixo_api.upload import HttpDocumentSourceAdapter, read_multipart_document
 
 router = APIRouter(prefix="/v1/extractions", tags=["Extractions"])
@@ -32,7 +36,12 @@ async def submit_extraction(
             profile=upload.fields.get("profile", "balanced"),
             schema_reference=upload.fields.get("schema_id"),
             template_reference=upload.fields.get("template_id"),
-            options=parse_options(upload.fields.get("options")),
+            options=_options_with_pages(
+                parse_options(upload.fields.get("options")),
+                parse_page_selection(
+                    upload.fields.get("page_selection") or upload.fields.get("pages")
+                ),
+            ),
             correlation_id=resolve_correlation_id(
                 request,
                 upload.fields.get("correlation_id"),
@@ -88,3 +97,14 @@ async def cancel_extraction(
 
 
 __all__ = ["router"]
+
+
+def _options_with_pages(
+    options: dict[str, object],
+    pages: tuple[int, ...] | None,
+) -> dict[str, object]:
+    if pages is None:
+        return options
+    merged = dict(options)
+    merged["page_selection"] = {"pages": list(pages)}
+    return merged

@@ -36,6 +36,11 @@ from eixo.plugins import (
     ExecutionTask,
     ProviderDescriptor,
 )
+from eixo.engine.pdf_public import (
+    PDF_INSPECT_CAPABILITY_ID,
+    PDF_PARSE_CAPABILITY_ID,
+    PDF_PROCESS_CAPABILITY_ID,
+)
 from eixo.runtime.local import LocalRuntime, LocalRuntimeConfig
 
 
@@ -101,18 +106,33 @@ def test_kernel_job_flow_status_result_cancel_and_isolation() -> None:
 def test_kernel_engines_do_not_share_mutable_state() -> None:
     first = engine_with_kernel_capability()
     second = DocumentEngine.local()
+    first_capability_ids = {
+        capability.capability_id for capability in first.registry.list_capabilities()
+    }
+    second_capability_ids = {
+        capability.capability_id for capability in second.registry.list_capabilities()
+    }
 
     assert first.registry is not second.registry
     assert first.runtime is not second.runtime
-    assert len(first.registry.list_capabilities()) == 1
-    assert second.registry.list_capabilities() == ()
+    assert first_capability_ids == {
+        CapabilityId("cap_kernel_process"),
+        PDF_INSPECT_CAPABILITY_ID,
+        PDF_PARSE_CAPABILITY_ID,
+        PDF_PROCESS_CAPABILITY_ID,
+    }
+    assert second_capability_ids == {
+        PDF_INSPECT_CAPABILITY_ID,
+        PDF_PARSE_CAPABILITY_ID,
+        PDF_PROCESS_CAPABILITY_ID,
+    }
 
 
 def test_kernel_missing_capability_and_timeout_are_structured() -> None:
     async def run() -> None:
         async with DocumentEngine.local() as engine:
             with pytest.raises(CapabilityNotFoundError):
-                await engine.process(ProcessingRequest(source=source()))
+                await engine.process(ProcessingRequest(source=csv_source()))
 
         async with engine_with_kernel_capability(
             delay=0.2,
@@ -219,6 +239,16 @@ def source() -> BytesSource:
         content=content,
         filename="kernel.pdf",
         declared_media_type="application/pdf",
+        size=len(content),
+    )
+
+
+def csv_source() -> BytesSource:
+    content = b"a,b\n1,2\n"
+    return BytesSource(
+        content=content,
+        filename="kernel.csv",
+        declared_media_type="text/csv",
         size=len(content),
     )
 

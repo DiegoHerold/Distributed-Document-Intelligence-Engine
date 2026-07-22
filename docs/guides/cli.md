@@ -52,6 +52,9 @@ O comando cria `InspectionRequest` com `LocalPathSource` e chama
 
 ```bash
 eixo parse documento.pdf
+eixo parse documento.pdf --profile textual
+eixo parse documento.pdf --profile visual --pages 1-3
+eixo parse documento.pdf --profile full-fidelity --output parsed.json
 eixo parse documento.pdf --format json --pretty
 eixo parse documento.pdf --output parsed.json
 ```
@@ -134,6 +137,7 @@ eixo inspect documento.pdf --debug
 
 ## Limitacoes
 
-Ainda nao existem capabilities reais de PDF, Excel, OCR, layout, tabelas ou IA
-semantica. Jobs e resultados usam persistencia local simples em SQLite, mas
-ainda nao ha API remota na CLI nem persistencia distribuida de producao.
+Existe integracao publica inicial do parser nativo de PDF. Excel, OCR, layout,
+tabelas e IA semantica ainda nao possuem capabilities publicas reais. Jobs e
+resultados usam persistencia local simples em SQLite, mas ainda nao ha API
+remota na CLI nem persistencia distribuida de producao.

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import asyncio
 
-from eixo import BytesSource, CapabilityNotFoundError, DocumentEngine, ProcessingRequest
+from eixo import BytesSource, DocumentEngine, PDFProviderUnavailableError, ProcessingRequest
 
 
 async def main() -> None:
@@ -16,7 +16,7 @@ async def main() -> None:
     async with DocumentEngine.local() as engine:
         try:
             await engine.process(request)
-        except CapabilityNotFoundError as error:
+        except PDFProviderUnavailableError as error:
             print(error.code)
 
 

@@ -52,9 +52,12 @@ Este diretorio organiza o contexto, a arquitetura, as decisoes, o roadmap e os d
 46. [Uso como biblioteca Python](guides/using-as-library.md)
 47. [Uso da API REST](guides/using-the-api.md)
 48. [Uso da CLI](guides/cli.md)
-49. [Manuseio seguro de arquivos](guides/safe-file-handling.md)
-50. [Testes de paridade](testing/parity-tests.md)
-51. [Arquivo historico](archive/README.md), quando for necessario auditar a origem das decisoes
+49. [Inspecao publica de PDF](guides/pdf-inspection.md)
+50. [Parsing publico de PDF](guides/pdf-parsing.md)
+51. [Perfis publicos de PDF](guides/pdf-profiles.md)
+52. [Manuseio seguro de arquivos](guides/safe-file-handling.md)
+53. [Testes de paridade](testing/parity-tests.md)
+54. [Arquivo historico](archive/README.md), quando for necessario auditar a origem das decisoes
 
 ## Estrutura
 

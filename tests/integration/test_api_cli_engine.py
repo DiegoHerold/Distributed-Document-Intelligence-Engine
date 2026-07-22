@@ -3,6 +3,11 @@ from __future__ import annotations
 from fastapi.testclient import TestClient
 
 from eixo.engine import DocumentEngine
+from eixo.engine.pdf_public import (
+    PDF_INSPECT_CAPABILITY_ID,
+    PDF_PARSE_CAPABILITY_ID,
+    PDF_PROCESS_CAPABILITY_ID,
+)
 from eixo.sdk import DocumentEngine as SdkDocumentEngine
 from eixo_api import create_app
 from eixo_cli.main import main
@@ -43,7 +48,15 @@ def test_cli_runtime_info(capsys) -> None:  # type: ignore[no-untyped-def]
 
 def test_sdk_exposes_engine_without_duplicate_logic() -> None:
     assert SdkDocumentEngine is DocumentEngine
-    assert DocumentEngine.local().registry.list_capabilities() == ()
+    capability_ids = {
+        capability.capability_id
+        for capability in DocumentEngine.local().registry.list_capabilities()
+    }
+    assert capability_ids == {
+        PDF_INSPECT_CAPABILITY_ID,
+        PDF_PARSE_CAPABILITY_ID,
+        PDF_PROCESS_CAPABILITY_ID,
+    }
 
 
 def test_document_engine_local_owns_runtime_lifecycle() -> None:

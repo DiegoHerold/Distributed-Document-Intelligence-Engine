@@ -57,6 +57,8 @@ Entrada: `multipart/form-data`.
 Campos:
 
 - `file`: obrigatorio;
+- `profile`: opcional para PDF, default do engine;
+- `page_selection` ou `pages`: opcional para PDF;
 - `options`: JSON object opcional;
 - `requested_capability`: opcional;
 - `correlation_id`: opcional.
@@ -128,6 +130,7 @@ Respostas de erro usam `ErrorResult`.
 | `PathTraversalError` | 400 |
 | `ReadTimeoutError` | 408 |
 | `CapabilityNotFoundError` | 422 |
+| `PDFProviderUnavailableError` | 503 |
 | `UnsupportedFormatError` | 415 |
 | `JobNotFoundError` | 404 |
 | `JobResultUnavailableError` | 409 |

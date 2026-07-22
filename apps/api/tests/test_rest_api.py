@@ -130,7 +130,7 @@ def test_parse_upload_options_and_result() -> None:
     assert response.json()["artifacts"] == []
 
 
-def test_missing_capability_returns_structured_error() -> None:
+def test_missing_pdf_provider_returns_structured_error() -> None:
     with TestClient(create_app(engine=DocumentEngine.local())) as client:
         response = client.post(
             "/v1/documents:inspect",
@@ -138,10 +138,10 @@ def test_missing_capability_returns_structured_error() -> None:
             headers={"X-Correlation-ID": "corr_missing"},
         )
 
-    assert response.status_code == 422
+    assert response.status_code == 503
     payload = response.json()
-    assert payload["code"] == "capability.not_found"
-    assert payload["category"] == "capability"
+    assert payload["code"] == "pdf.provider_unavailable"
+    assert payload["category"] == "configuration"
     assert payload["correlation_id"] == "corr_missing"
     assert "traceback" not in response.text.lower()
 

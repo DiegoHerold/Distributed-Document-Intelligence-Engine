@@ -279,6 +279,7 @@ from eixo.pdf.models import (
     PDFSupportLevel,
     ProviderLimitation,
 )
+from eixo.pdf.profiles import PDFParseOptions, PDFParseProfile
 from eixo.pdf.registry import PDFProviderRegistry
 from eixo.pdf.scene import (
     PDFPageScene,
@@ -330,6 +331,8 @@ __all__ = [
     "PDFMetadataValue",
     "PDFOpenOptions",
     "PDFPageGeometry",
+    "PDFParseOptions",
+    "PDFParseProfile",
     "PDFPageHandle",
     "PDFPageInspection",
     "PDFPageSummary",

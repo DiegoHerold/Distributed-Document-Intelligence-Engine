@@ -61,6 +61,17 @@ def build_parser() -> argparse.ArgumentParser:
         "Realiza o parsing nativo de um documento.",
         run_parse,
     )
+    parse = subcommands.choices["parse"]
+    parse.add_argument(
+        "--profile",
+        default="visual",
+        choices=("basic", "textual", "visual", "full_fidelity", "full-fidelity"),
+        help="Perfil publico de parsing.",
+    )
+    parse.add_argument(
+        "--pages",
+        help="Paginas 1-based, como 1,3,5 ou 1-3.",
+    )
     process = add_document_command(
         subcommands,
         "process",

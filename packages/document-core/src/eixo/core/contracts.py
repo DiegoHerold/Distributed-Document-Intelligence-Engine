@@ -206,17 +206,37 @@ class InspectionResult(Serializable):
 @dataclass(frozen=True, slots=True)
 class ParseRequest(Serializable):
     source: DocumentSource
+    profile: str | None = None
+    page_selection: tuple[int, ...] | None = None
     options: dict[str, Any] = field(default_factory=dict)
     requested_capability: str | None = None
     processing_profile: str | None = None
     correlation_id: CorrelationId = field(default_factory=CorrelationId.new)
     tenant_id: TenantId | None = None
 
+    def __post_init__(self) -> None:
+        if self.page_selection is not None:
+            if not self.page_selection:
+                raise ValueError("page_selection cannot be empty")
+            if any(page <= 0 for page in self.page_selection):
+                raise ValueError("page_selection uses 1-based positive page numbers")
+
 
 @dataclass(frozen=True, slots=True)
 class ParseResult(Serializable):
     document_id: DocumentId
     status: ResultStatus
+    format: str | None = None
+    profile: str | None = None
+    artifact_reference: ArtifactReference | None = None
+    scene_artifact_reference: ArtifactReference | None = None
+    summary: dict[str, Any] = field(default_factory=dict)
+    page_count: int | None = None
+    statistics: dict[str, Any] = field(default_factory=dict)
+    fidelity_summary: dict[str, Any] = field(default_factory=dict)
+    editability_summary: dict[str, Any] = field(default_factory=dict)
+    limitations: tuple[str, ...] = ()
+    provenance: dict[str, Any] = field(default_factory=dict)
     artifacts: tuple[ArtifactReference, ...] = ()
     warnings: tuple[EixoWarning, ...] = ()
     errors: tuple[ErrorResult, ...] = ()

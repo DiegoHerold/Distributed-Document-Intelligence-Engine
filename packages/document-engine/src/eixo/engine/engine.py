@@ -67,8 +67,16 @@ from eixo.pdf import (
     PDFTypographyResolver,
 )
 from eixo.runtime.local import LocalRuntime, LocalRuntimeConfig
+from eixo.artifacts import LocalArtifactStore
 from eixo.engine.configuration import LocalEngineConfig
 from eixo.engine.lifecycle import EngineState
+from eixo.engine.pdf_public import (
+    PDFInspectionCapability,
+    PDFParseCapability,
+    PDFProcessingCapability,
+    PUBLIC_PDF_PROVIDER_ID,
+    public_pdf_provider_descriptor,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -162,6 +170,13 @@ class DocumentEngine:
         pdf_registry = pdf_provider_registry or PDFProviderRegistry()
         for provider in pdf_providers:
             pdf_registry.register(provider)
+        if not pdf_registry.list_providers():
+            try:
+                from eixo.providers.pdf.pymupdf import create_pymupdf_pdf_provider
+
+                pdf_registry.register(create_pymupdf_pdf_provider())
+            except Exception:
+                logger.info("engine.pdf_provider.autoregistration_skipped")
         technical_inspector = pdf_technical_inspector or DefaultPDFTechnicalInspector(
             pdf_registry
         )
@@ -188,6 +203,31 @@ class DocumentEngine:
             engine_config.data_directory,
             security_policy=engine_config.security,
         )
+        artifact_store = LocalArtifactStore(engine_config.data_directory)
+        if not any(
+            provider.provider_id == PUBLIC_PDF_PROVIDER_ID
+            for provider in registry.list_providers()
+        ):
+            registry.register_provider(public_pdf_provider_descriptor())
+        pdf_parse_capability = PDFParseCapability(
+            pdf_provider_registry=pdf_registry,
+            artifact_store=artifact_store,
+            preferred_provider=engine_config.pdf.default_provider,
+        )
+        for capability in (
+            PDFInspectionCapability(
+                pdf_provider_registry=pdf_registry,
+                artifact_store=artifact_store,
+                preferred_provider=engine_config.pdf.default_provider,
+            ),
+            pdf_parse_capability,
+            PDFProcessingCapability(pdf_parse_capability),
+        ):
+            if not any(
+                item.capability_id == capability.descriptor.capability_id
+                for item in registry.list_capabilities()
+            ):
+                registry.register(capability)
         service = CapabilityBackedDocumentService(
             registry=registry,
             runtime=runtime,
@@ -417,6 +457,8 @@ class DocumentEngine:
         self,
         request_or_source: ParseRequest | DocumentInput,
         *,
+        profile: str | None = None,
+        pages: tuple[int, ...] | list[int] | None = None,
         options: dict[str, object] | None = None,
     ) -> ParseResult:
         request = (
@@ -424,6 +466,8 @@ class DocumentEngine:
             if isinstance(request_or_source, ParseRequest)
             else ParseRequest(
                 source=self._source_from_input(request_or_source),
+                profile=profile,
+                page_selection=tuple(pages) if pages is not None else None,
                 options=options or {},
             )
         )

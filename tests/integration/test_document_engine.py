@@ -9,7 +9,6 @@ from eixo import DocumentEngine as PublicDocumentEngine
 from eixo.core import (
     BytesSource,
     CapabilityId,
-    CapabilityNotFoundError,
     CapabilityStatus,
     CapabilityVersion,
     DocumentId,
@@ -25,6 +24,7 @@ from eixo.core import (
     ProviderId,
     ProviderVersion,
     ResultStatus,
+    UnsupportedFormatError,
 )
 from eixo.engine import DocumentEngine, EngineState, LocalEngineConfig
 from eixo.plugins import CapabilityDescriptor, CapabilityRegistry, ExecutionContext
@@ -160,6 +160,16 @@ def source() -> BytesSource:
     )
 
 
+def unknown_source() -> BytesSource:
+    content = b"not a pdf"
+    return BytesSource(
+        content=content,
+        size=len(content),
+        filename="sample.bin",
+        declared_media_type="application/octet-stream",
+    )
+
+
 def test_public_imports_expose_document_engine() -> None:
     assert PublicDocumentEngine is DocumentEngine
 
@@ -243,8 +253,8 @@ def test_inspect_parse_and_process_delegate_to_application_use_cases() -> None:
 def test_capability_absent_is_preserved_as_domain_error() -> None:
     async def run() -> None:
         engine = DocumentEngine.local()
-        with pytest.raises(CapabilityNotFoundError):
-            await engine.inspect(source())
+        with pytest.raises(UnsupportedFormatError):
+            await engine.inspect(unknown_source())
         await engine.shutdown()
 
     asyncio.run(run())
@@ -255,9 +265,15 @@ def test_submit_status_result_and_cancel_job() -> None:
         async with DocumentEngine.local(registry=registry_with_fakes()) as engine:
             job = await engine.submit(ProcessingRequest(source=source()))
             assert job.status is JobStatus.QUEUED
-            await asyncio.sleep(0.1)
+            result = None
             status = await engine.get_job_status(job.job_id)
-            result = await engine.get_job_result(job.job_id)
+            for _ in range(20):
+                status = await engine.get_job_status(job.job_id)
+                if status.status is JobStatus.COMPLETED:
+                    result = await engine.get_job_result(job.job_id)
+                    break
+                await asyncio.sleep(0.05)
+            assert result is not None
             assert status.status in {JobStatus.COMPLETED, JobStatus.RUNNING}
             assert result.status is ProcessingStatus.COMPLETED
 

@@ -29,6 +29,8 @@ from eixo.core import (
     ExecutionTimeoutError,
     InspectionRequest,
     InspectionResult,
+    InvalidPDFError,
+    InvalidPDFPasswordError,
     InvalidStateTransitionError,
     JobId,
     JobNotFoundError,
@@ -38,6 +40,11 @@ from eixo.core import (
     JobStoredResult,
     ParseRequest,
     ParseResult,
+    PDFPageOutOfRangeError,
+    PDFPasswordRequiredError,
+    PDFProviderExecutionError,
+    PDFProviderUnavailableError,
+    PDFResourceLimitExceededError,
     ProcessingRequest,
     ProcessingResult,
     ProcessingStatus,
@@ -46,6 +53,7 @@ from eixo.core import (
     DocumentFormat,
     IdentifiedDocumentContent,
     UnsupportedFormatError,
+    UnsupportedPDFError,
     ValidationError,
     isoformat_utc,
     utc_now,
@@ -142,6 +150,46 @@ class CapabilityBackedDocumentService:
                     )
                 if result.error.code == ValidationError.code:
                     raise ValidationError(
+                        result.error.message,
+                        details=result.error.details,
+                    )
+                if result.error.code == PDFProviderUnavailableError.code:
+                    raise PDFProviderUnavailableError(
+                        result.error.message,
+                        details=result.error.details,
+                    )
+                if result.error.code == UnsupportedPDFError.code:
+                    raise UnsupportedPDFError(
+                        result.error.message,
+                        details=result.error.details,
+                    )
+                if result.error.code == InvalidPDFError.code:
+                    raise InvalidPDFError(
+                        result.error.message,
+                        details=result.error.details,
+                    )
+                if result.error.code == PDFPasswordRequiredError.code:
+                    raise PDFPasswordRequiredError(
+                        result.error.message,
+                        details=result.error.details,
+                    )
+                if result.error.code == InvalidPDFPasswordError.code:
+                    raise InvalidPDFPasswordError(
+                        result.error.message,
+                        details=result.error.details,
+                    )
+                if result.error.code == PDFPageOutOfRangeError.code:
+                    raise PDFPageOutOfRangeError(
+                        result.error.message,
+                        details=result.error.details,
+                    )
+                if result.error.code == PDFResourceLimitExceededError.code:
+                    raise PDFResourceLimitExceededError(
+                        result.error.message,
+                        details=result.error.details,
+                    )
+                if result.error.code == PDFProviderExecutionError.code:
+                    raise PDFProviderExecutionError(
                         result.error.message,
                         details=result.error.details,
                     )

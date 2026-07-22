@@ -10,6 +10,9 @@ Guias operacionais e de contribuicao devem ficar nesta pasta.
 - [cli.md](cli.md): uso da CLI inicial.
 - [using-local-runtime.md](using-local-runtime.md): uso do LocalRuntime.
 - [using-document-engine.md](using-document-engine.md): uso da fachada `DocumentEngine`.
+- [pdf-inspection.md](pdf-inspection.md): inspecao publica de PDF.
+- [pdf-parsing.md](pdf-parsing.md): parsing publico de PDF.
+- [pdf-profiles.md](pdf-profiles.md): perfis publicos do parser PDF.
 
 ## Guias esperados
 
