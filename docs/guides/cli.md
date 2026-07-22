@@ -90,6 +90,19 @@ Os comandos chamam `DocumentEngine.get_job_status()`,
 Jobs locais sao persistidos no `data_directory` do engine por SQLite. A CLI
 continua sem acessar o banco diretamente; ela sempre passa pela fachada publica.
 
+## PDF Validate
+
+```bash
+eixo pdf validate ./pdfs-reais --profile full-fidelity --diagnostic-preview --output ./diagnostics
+eixo pdf validate documento.pdf --profile visual --pages 1-3 --output ./diagnostics
+eixo pdf validate protegido.pdf --password "senha-temporaria"
+```
+
+O comando chama `DocumentEngine.validate_pdf_batch()` e gera um pacote local de
+diagnostico com relatorios JSON/HTML, warnings, limitacoes, cenas por pagina e
+PNGs tecnicos. PDFs reais nao sao adicionados ao repositorio e senhas nao sao
+persistidas nos relatorios.
+
 ## Formatos de saida
 
 Console:

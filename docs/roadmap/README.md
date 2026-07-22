@@ -54,10 +54,11 @@ API, biblioteca, workers e CLI nunca devem reimplementar a mesma logica.
 
 ## Proxima fase recomendada
 
-Com as Fases 3.12 e 3.13 concluidas no workspace, a proxima etapa natural e
-fechar as pendencias best effort da Fase 3.9 ou avancar para o Bloco 4:
-extracao nativa de Excel. A interatividade PDF ainda deve ser tratada como best
-effort ate a cobertura detalhada de links, anotacoes e formularios amadurecer.
+Com as Fases 3.12, 3.13 e 3.14 concluidas no workspace, a proxima etapa natural
+e fechar as pendencias best effort da Fase 3.9 ou avancar para o Bloco 4:
+extracao nativa de Excel. A interatividade de diagnostico da Fase 3.14 e
+obrigatoria para investigar artefatos nativos; cobertura detalhada de links,
+anotacoes e formularios continua dependente da evolucao da Fase 3.9.
 
 Veja o contexto detalhado em
 [block-3-native-pdf-scene.md](block-3-native-pdf-scene.md).

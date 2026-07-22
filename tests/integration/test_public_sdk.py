@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import importlib
 import subprocess
 import sys
 import venv
@@ -84,7 +85,18 @@ def test_public_configuration_defaults_validation_and_immutability() -> None:
         LocalRuntimeConfig(max_concurrent_tasks=0)
 
 
-def test_public_lifecycle_and_capability_absent() -> None:
+def test_public_lifecycle_and_capability_absent(  # type: ignore[no-untyped-def]
+    monkeypatch,
+) -> None:
+    real_import = importlib.import_module
+
+    def fake_import(name: str, package: str | None = None):
+        if name == "fitz":
+            raise ModuleNotFoundError(name)
+        return real_import(name, package)
+
+    monkeypatch.setattr(importlib, "import_module", fake_import)
+
     async def run() -> None:
         content = b"%PDF-1.7\n"
         source = BytesSource(

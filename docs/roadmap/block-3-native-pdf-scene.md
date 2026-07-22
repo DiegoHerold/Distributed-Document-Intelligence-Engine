@@ -464,6 +464,23 @@ estruturais revisaveis, preview diagnostico PNG/JSON e testes `golden` /
 [pdf-visual-regression.md](../testing/pdf-visual-regression.md) e
 [pdf-diagnostic-preview.md](../guides/pdf-diagnostic-preview.md).
 
+### 3.14 - Laboratorio de validacao com PDFs reais
+
+Status: concluida.
+
+Criar fluxo exploratorio local para validar PDFs reais sem promove-los
+automaticamente ao corpus permanente.
+
+Entrega implementada: `eixo pdf validate`, processamento independente por
+documento, pacote local de diagnostico por PDF, resumo consolidado
+`summary.json`/`index.html`, historico `history.json`, execucoes imutaveis por
+`diagnostic_run_id`, renderizacao original, overlays, `page-XXX-elements.json`,
+checks estruturais, template de avaliacao manual e laboratorio interativo
+autocontido em `report.html` com clique em elementos, filtros, paineis de texto,
+imagem, vetor e recursos. O laboratorio consome artefatos de diagnostico e nao
+faz o `DocumentEngine` depender de diagnostics. Ver
+[pdf-real-validation-lab.md](../guides/pdf-real-validation-lab.md).
+
 ## Fora Do Escopo
 
 - OCR;

@@ -102,6 +102,9 @@ class DocumentEngine:
     get_job_status_use_case: GetJobStatus | None = None
     get_job_result_use_case: GetJobResult | None = None
     cancel_job_use_case: CancelJob | None = None
+    artifact_store: LocalArtifactStore = field(
+        default_factory=lambda: LocalArtifactStore(Path(".eixo/local"))
+    )
     config: LocalEngineConfig = field(default_factory=LocalEngineConfig)
     state: EngineState = EngineState.CREATED
 
@@ -259,6 +262,7 @@ class DocumentEngine:
             get_job_status_use_case=GetJobStatus(jobs),
             get_job_result_use_case=GetJobResult(jobs),
             cancel_job_use_case=CancelJob(jobs),
+            artifact_store=artifact_store,
             config=engine_config,
         )
 

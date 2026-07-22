@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import importlib
 import time
 from dataclasses import dataclass
 from typing import Any
@@ -130,7 +131,18 @@ def test_parse_upload_options_and_result() -> None:
     assert response.json()["artifacts"] == []
 
 
-def test_missing_pdf_provider_returns_structured_error() -> None:
+def test_missing_pdf_provider_returns_structured_error(  # type: ignore[no-untyped-def]
+    monkeypatch,
+) -> None:
+    real_import = importlib.import_module
+
+    def fake_import(name: str, package: str | None = None):
+        if name == "fitz":
+            raise ModuleNotFoundError(name)
+        return real_import(name, package)
+
+    monkeypatch.setattr(importlib, "import_module", fake_import)
+
     with TestClient(create_app(engine=DocumentEngine.local())) as client:
         response = client.post(
             "/v1/documents:inspect",

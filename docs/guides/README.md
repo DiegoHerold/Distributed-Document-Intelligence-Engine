@@ -14,6 +14,7 @@ Guias operacionais e de contribuicao devem ficar nesta pasta.
 - [pdf-parsing.md](pdf-parsing.md): parsing publico de PDF.
 - [pdf-profiles.md](pdf-profiles.md): perfis publicos do parser PDF.
 - [pdf-diagnostic-preview.md](pdf-diagnostic-preview.md): preview tecnico de diagnostico PDF.
+- [pdf-real-validation-lab.md](pdf-real-validation-lab.md): laboratorio local para PDFs reais.
 
 ## Guias esperados
 

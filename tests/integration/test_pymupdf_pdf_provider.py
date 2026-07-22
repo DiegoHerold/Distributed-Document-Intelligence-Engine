@@ -329,6 +329,7 @@ def test_pymupdf_provider_extracts_native_text_with_fake_backend() -> None:
         assert page.relations
         assert native.text_layer is not None
         assert native.text_layer.text_styles
+        assert native.text_layer.text_styles[0].fill_opacity == 1.0
         assert "FakePage" not in str(native.to_dict())
 
     asyncio.run(run())
@@ -525,6 +526,7 @@ class FakePage:
                                         "font": "Arial-BoldMT",
                                         "size": 12.0,
                                         "color": 0,
+                                        "alpha": 255,
                                         "bbox": (10.0, 20.0, 48.0, 32.0),
                                         "origin": (10.0, 30.0),
                                         "chars": [

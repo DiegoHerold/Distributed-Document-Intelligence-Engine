@@ -3008,7 +3008,7 @@ def _style_from_span(
         font_id=font_id,
         font_size=size,
         fill_color=_text_color(color_value),
-        fill_opacity=_float_value(span.get("alpha")),
+        fill_opacity=_opacity_value(span.get("alpha")),
         text_render_mode=render_mode,
         writing_mode=_writing_mode(direction),
         direction=direction,
@@ -3284,6 +3284,17 @@ def _float_value(value: object) -> float | None:
         return float(value) if value is not None else None
     except (TypeError, ValueError):
         return None
+
+
+def _opacity_value(value: object) -> float | None:
+    opacity = _float_value(value)
+    if opacity is None:
+        return None
+    if 0.0 <= opacity <= 1.0:
+        return opacity
+    if 1.0 < opacity <= 255.0:
+        return opacity / 255.0
+    return max(0.0, min(1.0, opacity))
 
 
 def _int_value(value: object) -> int | None:

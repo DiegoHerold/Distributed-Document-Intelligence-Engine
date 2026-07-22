@@ -68,6 +68,7 @@ Contexto detalhado: [block-3-native-pdf-scene.md](../block-3-native-pdf-scene.md
 | 3.11 | Criar o `NativePDFSceneArtifact` | Concluida |
 | 3.12 | Integrar parser, armazenamento e canais publicos | Concluida |
 | 3.13 | Criar corpus, golden tests e regressao visual | Concluida |
+| 3.14 | Laboratorio de validacao com PDFs reais | Concluida |
 
 | Bloco | Tema | Dependencia principal | Estado |
 |---|---|---|---|

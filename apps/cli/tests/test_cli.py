@@ -54,6 +54,7 @@ def test_command_help() -> None:
         ["inspect", "--help"],
         ["parse", "--help"],
         ["process", "--help"],
+        ["pdf", "validate", "--help"],
         ["jobs", "--help"],
         ["jobs", "status", "--help"],
         ["jobs", "result", "--help"],
@@ -136,7 +137,12 @@ def test_missing_capability_exit_code(tmp_path: Path) -> None:
     document = tmp_path / "sample.pdf"
     document.write_bytes(PDF_BYTES)
 
-    code = main(["parse", str(document)], stdout=io.StringIO(), stderr=io.StringIO())
+    code = main(
+        ["parse", str(document)],
+        engine_factory=lambda: FakeMissingCapabilityEngine(),
+        stdout=io.StringIO(),
+        stderr=io.StringIO(),
+    )
 
     assert code == int(ExitCode.CAPABILITY_UNAVAILABLE)
 
@@ -199,6 +205,53 @@ def test_process_no_wait_returns_job(tmp_path: Path) -> None:
 
     assert code == 0
     assert json.loads(out.getvalue())["status"] in {"queued", "running", "completed"}
+
+
+def test_pdf_validate_cli_uses_engine_lab(tmp_path: Path) -> None:
+    document = tmp_path / "sample.pdf"
+    document.write_bytes(PDF_BYTES)
+    output = tmp_path / "diagnostics"
+    console = io.StringIO()
+
+    code = main(
+        [
+            "pdf",
+            "validate",
+            str(document),
+            "--profile",
+            "visual",
+            "--diagnostic-preview",
+            "--output",
+            str(output),
+        ],
+        engine_factory=lambda: FakeValidationEngine(),
+        stdout=console,
+        stderr=io.StringIO(),
+    )
+
+    assert code == 0
+    assert "PDF validation batch" in console.getvalue()
+    assert str(output / "batch-report.json") in console.getvalue()
+
+    json_out = io.StringIO()
+    code = main(
+        [
+            "pdf",
+            "validate",
+            str(document),
+            "--format",
+            "json",
+            "--pretty",
+            "--output",
+            str(output),
+        ],
+        engine_factory=lambda: FakeValidationEngine(),
+        stdout=json_out,
+        stderr=io.StringIO(),
+    )
+
+    assert code == 0
+    assert json.loads(json_out.getvalue())["document_count"] == 1
 
 
 def test_jobs_status_result_cancel_and_errors() -> None:
@@ -429,3 +482,49 @@ class FakeJobEngine:
 
     async def cancel_job(self, job_id: str) -> JobResult:
         return JobResult(job_id=JobId(job_id), status=JobStatus.CANCELLED)
+
+
+class FakeValidationEngine:
+    async def __aenter__(self) -> "FakeValidationEngine":
+        return self
+
+    async def __aexit__(self, exc_type: object, exc: object, tb: object) -> None:
+        return None
+
+    async def validate_pdf_batch(
+        self,
+        input_path: str | Path,
+        *,
+        output_directory: str | Path,
+        profile: str = "visual",
+        pages: tuple[int, ...] | list[int] | None = None,
+        password: str | None = None,
+        diagnostic_preview: bool = False,
+    ) -> object:
+        class Result:
+            def to_dict(self) -> dict[str, object]:
+                return {
+                    "document_count": 1,
+                    "documents_completed": 1,
+                    "documents_failed": 0,
+                    "warning_count": 0,
+                    "limitation_count": 0,
+                    "consolidated_report_path": str(
+                        Path(output_directory) / "batch-report.json"
+                    ),
+                }
+
+        return Result()
+
+
+class FakeMissingCapabilityEngine:
+    async def __aenter__(self) -> "FakeMissingCapabilityEngine":
+        return self
+
+    async def __aexit__(self, exc_type: object, exc: object, tb: object) -> None:
+        return None
+
+    async def parse(self, request: ParseRequest) -> ParseResult:
+        from eixo import CapabilityNotFoundError
+
+        raise CapabilityNotFoundError("capability not found")

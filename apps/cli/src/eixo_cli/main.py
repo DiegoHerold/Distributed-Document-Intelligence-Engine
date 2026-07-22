@@ -14,6 +14,7 @@ from eixo_cli.commands import (
     run_jobs_result,
     run_jobs_status,
     run_parse,
+    run_pdf_validate,
     run_process,
 )
 from eixo_cli.errors import exit_code_for_error, report_error, report_json_error
@@ -93,6 +94,41 @@ def build_parser() -> argparse.ArgumentParser:
     add_job_command(job_subcommands, "status", "Consulta o status de um job.", run_jobs_status)
     add_job_command(job_subcommands, "result", "Consulta o resultado de um job.", run_jobs_result)
     add_job_command(job_subcommands, "cancel", "Cancela um job.", run_jobs_cancel)
+
+    pdf = subcommands.add_parser("pdf", help="Ferramentas tecnicas de PDF.")
+    pdf_subcommands = pdf.add_subparsers(dest="pdf_command")
+    pdf_validate = pdf_subcommands.add_parser(
+        "validate",
+        help="Valida PDFs reais em lote e gera pacote de diagnostico local.",
+    )
+    pdf_validate.add_argument("source", help="PDF local ou pasta com PDFs.")
+    pdf_validate.add_argument(
+        "--profile",
+        default="visual",
+        choices=("basic", "textual", "visual", "full_fidelity", "full-fidelity"),
+        help="Perfil publico de parsing PDF.",
+    )
+    pdf_validate.add_argument("--pages", help="Paginas 1-based, como 1,3 ou 1-3.")
+    pdf_validate.add_argument("--password", help="Senha temporaria; nao e persistida.")
+    pdf_validate.add_argument(
+        "--diagnostic-preview",
+        action="store_true",
+        help="Gera PNGs de overlay diagnostico por pagina.",
+    )
+    pdf_validate.add_argument(
+        "--output",
+        default="diagnostics",
+        help="Diretorio local para o pacote de diagnostico.",
+    )
+    pdf_validate.add_argument(
+        "--open-report",
+        action="store_true",
+        help="Mostra o caminho do relatorio HTML gerado.",
+    )
+    pdf_validate.add_argument("--format", choices=("console", "json"), default="console")
+    pdf_validate.add_argument("--pretty", action="store_true")
+    pdf_validate.add_argument("--debug", action="store_true")
+    pdf_validate.set_defaults(handler=run_pdf_validate)
 
     runtime = subcommands.add_parser("runtime", help="Inspeciona o LocalRuntime.")
     runtime_subcommands = runtime.add_subparsers(dest="runtime_command")
